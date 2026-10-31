@@ -1,6 +1,8 @@
 // The pack: DuckDB loads files into tables, runs transforms and publishes
 // Parquet, locally or wherever DuckDB runs.
 import type { Pack } from "@ingestron/definitions";
+import { build } from "./build.js";
+import { duckdbFiles, duckdbLanded, duckdbSql, duckdbTable } from "./methods.js";
 import { duckdbTypes } from "./types.js";
 
 /**
@@ -27,6 +29,11 @@ export const duckdb: Pack = {
     store: { default: "duckdb-table" },
     transform: { default: "duckdb-sql" },
   },
-  methods: {},
-  build: () => ({}),
+  methods: {
+    "duckdb-files": duckdbFiles,
+    "duckdb-landed": duckdbLanded,
+    "duckdb-table": duckdbTable,
+    "duckdb-sql": duckdbSql,
+  },
+  build,
 };
