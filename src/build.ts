@@ -31,15 +31,22 @@ function readme(project: string, environment: string): string {
   return `# DuckDB SQL for ${project} (${environment})
 
 Run \`run.sql\` from the project folder, where its paths start, with the DuckDB
-command line:
+command line, naming this folder, for example:
 
 \`\`\`sh
-duckdb ingestron.duckdb < <this folder>/run.sql
+duckdb ingestron.duckdb < build/${environment}/run.sql
 \`\`\`
 
 It loads each table into \`ingestron.duckdb\`, runs the transforms, and
 publishes each table to the \`published\` folder as \`<schema>.<table>.parquet\`;
 the folder must exist. Running it again is safe. \`tables/\` holds each table's
-SQL alone, to run one table again.
+SQL alone, to run one table again:
+
+\`\`\`sh
+duckdb ingestron.duckdb -c ".read build/${environment}/tables/<schema>.<table>.sql"
+\`\`\`
+
+When the standard lists other packs too, these files are in
+\`build/${environment}/duckdb/\` instead.
 `;
 }
