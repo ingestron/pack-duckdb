@@ -45,12 +45,12 @@
     "prepack": "pnpm build"
   },
   "peerDependencies": {
-    "@ingestron/definitions": "^1.3.0"
+    "@ingestron/definitions": "^1.3.1"
   },
   "devDependencies": {
     "@duckdb/node-api": "1.5.6-r.2",
     "@ingestron/config": "^1.1.0",
-    "@ingestron/definitions": "^1.3.0",
+    "@ingestron/definitions": "^1.3.1",
     "@microsoft/api-extractor": "7.59.4",
     "@types/node": "22.20.5",
     "eslint": "10.13.0",
