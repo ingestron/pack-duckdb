@@ -2,7 +2,7 @@
 import type { Pack } from "@ingestron/definitions";
 import { describe, expect, it } from "vitest";
 import { duckdb } from "../src/index.js";
-import { folder, generate, project } from "./project.js";
+import { contract, folder, generate, project } from "./project.js";
 
 /** A pack that lands files somewhere DuckDB cannot see, and says where only when asked to. */
 const copier = (output: boolean): Pack => ({
@@ -57,5 +57,31 @@ describe("runs-on", () => {
     ).toEqual([
       '"duckdb-table" for table "orders": "copy" does not say where its files land, so DuckDB cannot read them.',
     ]);
+  });
+
+  it("writes the same SQL for the cloud and the local environment, apart from where the files are", () => {
+    const where = folder();
+    const renaming: Pack = {
+      ...copier(true),
+      methods: { copy: { ...copier(true).methods.copy!, renames: true } },
+    };
+    const files = project(where, "{}", {
+      "project.yaml":
+        "id: shop\nenvironments: { dev: {}, local: { runs-on: duckdb } }\nimports: ['*.yaml']\n",
+      "standard.yaml":
+        "apiVersion: ingestron.io/v1\nkind: Standard\nid: acme\npacks: [duckdb@1, copier@1]\ningest: { settings: { duckdb-landed: { landing: ./samples } } }\n",
+      "flow.yaml":
+        "apiVersion: ingestron.io/v1\nkind: Flow\nid: shop\nsource: shop\ningest: { uses: copy }\ntables:\n  orders: { object: orders, contract: orders }\n",
+      "orders.yaml": contract().replace(
+        "{ name: name, logicalType: string }",
+        '{ name: name, logicalType: string, physicalName: "CustomerName" }',
+      ),
+    });
+    const sqlOf = (environment: string) =>
+      generate(files, [duckdb, renaming], environment).files["run.sql"] ?? "";
+    const cloud = sqlOf("dev").replace("abfss://landing@acct/orders/*.parquet", "<landed>");
+    const local = sqlOf("local").replace("./samples/orders/*.parquet", "<landed>");
+    expect(local.replace("(local)", "(dev)")).toBe(cloud);
+    expect(local).toContain('CAST("name" AS VARCHAR) AS "name"');
   });
 });
