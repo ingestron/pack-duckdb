@@ -91,3 +91,11 @@ export async function writeParquet(path: string, values: string): Promise<void> 
   );
   connection.closeSync();
 }
+
+/** Writes the rows of a query as a Parquet file with DuckDB. */
+export async function writeQuery(path: string, query: string): Promise<void> {
+  const instance = await DuckDBInstance.create(":memory:");
+  const connection = await instance.connect();
+  await connection.run(`COPY (${query}) TO '${path}' (FORMAT parquet)`);
+  connection.closeSync();
+}

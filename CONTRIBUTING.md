@@ -46,8 +46,7 @@ file; `pnpm validate` type-checks them all.
 ## Tests
 
 - Every change in behaviour comes with a test that fails without it.
-- Behaviour shared with other implementations goes in `spec/conformance/`
-  as language-neutral cases, not only in TypeScript tests.
+- Behaviour is described in `spec/behaviour.md`; change it with the code.
 - Test names read as sentences describing behaviour.
 
 ## Done means
