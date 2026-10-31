@@ -2,6 +2,7 @@
 // Parquet, locally or wherever DuckDB runs.
 import type { Pack } from "@ingestron/definitions";
 import { build } from "./build.js";
+import { contract } from "./contract.js";
 import { duckdbFiles, duckdbLanded, duckdbSql, duckdbTable } from "./methods.js";
 import { duckdbTypes } from "./types.js";
 
@@ -36,4 +37,5 @@ export const duckdb: Pack = {
     "duckdb-sql": duckdbSql,
   },
   build,
+  contract,
 };
