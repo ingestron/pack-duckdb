@@ -21,11 +21,23 @@ safe in every mode. Each table is published to the `published` folder as
 `<schema>.<table>.parquet`; the folder must exist.
 
 The pack writes `run.sql`, every table in order, and `tables/`, each table's
-SQL alone. Run it from the project folder with the DuckDB command line:
+SQL alone. `ingestron apply` puts them in `build/<environment>/`, or in
+`build/<environment>/duckdb/` when the standard lists other packs too. Run
+`run.sql` from the project folder with the DuckDB command line, for example:
 
 ```sh
 duckdb ingestron.duckdb < build/dev/run.sql
 ```
+
+Running again is safe in every mode, and a contract that gains columns keeps
+loading: new columns are added to the table. A changed primary key or column
+type needs the table built again: delete `ingestron.duckdb` and run again,
+which reloads everything from the files. In `upsert`, a key's row is the last by
+`sequence_by`, then by file name; set `sequence_by` when one file can hold a key
+twice.
+
+Expectations written in a flow are refused, since DuckDB tables check no rows
+yet; the contract's quality rules are reported as not checked.
 
 ## Run a cloud project locally
 
@@ -54,6 +66,10 @@ The tables' store and transforms must be DuckDB's in every environment, so the
 local run is the cloud run with local paths. Failures inside ADF (connectors,
 credentials, networking) only happen in ADF.
 
+`duckdb-landed` reads Parquet files one folder down: `<landing>/<object>/*.parquet`.
+Tables ADF lands in other ways find no files locally: Microsoft 365 data (JSON),
+files `adf-files` copies as they are, and custom `path` layouts.
+
 ## Example
 
 ```ts
@@ -61,7 +77,7 @@ import { loadDefinitions } from "@ingestron/definitions";
 import { duckdb } from "@ingestron/pack-duckdb";
 
 const result = loadDefinitions("definitions", { packs: [duckdb], environment: "local" });
-if (result.model) console.log(duckdb.build(result.model)["duckdb/run.sql"] ?? "");
+if (result.model) console.log(duckdb.build(result.model)["run.sql"] ?? "");
 ```
 
 ## Documentation

@@ -14,7 +14,7 @@ describe("replace", () => {
       `CREATE OR REPLACE TABLE "bronze"."orders" AS SELECT CAST("id" AS BIGINT) AS "id", CAST("name" AS VARCHAR) AS "name", CAST("seq" AS BIGINT) AS "seq" FROM read_parquet('${where.input}/orders/*.parquet');`,
     );
     expect(sql).toContain(
-      `COPY "bronze"."orders" TO '${where.published}/bronze.orders.parquet' (FORMAT parquet);`,
+      `COPY (SELECT "id", "name", "seq" FROM "bronze"."orders") TO '${where.published}/bronze.orders.parquet' (FORMAT parquet);`,
     );
     const database = join(where.root, "ingestron.duckdb");
     expect(await execute(database, sql, ordered)).toEqual([
@@ -112,7 +112,7 @@ describe("transforms", () => {
       project(where, "{}", { "counts.yaml": transform, "counts-contract.yaml": counts }),
     );
     expect(sql).toContain(
-      'CREATE OR REPLACE TABLE "silver"."counts" AS SELECT "name", "n" FROM (SELECT name, count(*) AS n FROM "bronze"."orders" GROUP BY name) AS "source";',
+      'CREATE OR REPLACE TABLE "silver"."counts" AS SELECT "name", "n" FROM (\nSELECT name, count(*) AS n FROM "bronze"."orders" GROUP BY name\n) AS "source";',
     );
     const database = join(where.root, "ingestron.duckdb");
     expect(await execute(database, sql, "SELECT name, n FROM silver.counts ORDER BY name")).toEqual(

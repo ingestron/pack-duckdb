@@ -67,6 +67,10 @@ export const duckdbFiles: Method = {
       csv,
     },
   },
+  check: (table) =>
+    typeof table.ingest!.connection.settings.path === "string"
+      ? []
+      : ["the files connection needs a path, the folder its files are in"],
   output: (table) => {
     const path = String(table.ingest!.connection.settings.path ?? "").replace(/\/+$/, "");
     return {
@@ -123,9 +127,17 @@ export const duckdbTable: Method = {
       return [
         `"${table.ingest?.method}" does not say where its files land, so DuckDB cannot read them`,
       ];
-    return table.store!.settings.mode === "upsert" && table.contract.primaryKey.length === 0
-      ? ["upsert needs the contract's primaryKey"]
-      : [];
+    const unchecked = table.expectations
+      .filter((expectation) => expectation.from === "definition")
+      .map(
+        (expectation) =>
+          `DuckDB tables check no rows yet, so the expectation "${expectation.name}" would not be checked; remove it`,
+      );
+    const noKey =
+      table.store!.settings.mode === "upsert" && table.contract.primaryKey.length === 0
+        ? ["upsert needs the contract's primaryKey"]
+        : [];
+    return [...noKey, ...unchecked];
   },
 };
 

@@ -27,7 +27,7 @@ describe("readFiles", () => {
 
   it("names each row's file when asked", () => {
     expect(readFiles({ location: "./in/*.parquet", format: "parquet", withFile: true })).toBe(
-      "read_parquet('./in/*.parquet', filename = true)",
+      "read_parquet('./in/*.parquet', filename = '_ingestron_file')",
     );
   });
 

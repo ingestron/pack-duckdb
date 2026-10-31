@@ -19,12 +19,15 @@ export function literal(text: string): string {
   return `'${text.replaceAll("'", "''")}'`;
 }
 
+/** The column naming each row's file; unlike `filename`, no file holds it. */
+export const fileColumn = "_ingestron_file";
+
 /** What a reader reads: a file or pattern, its format, and how. */
 export interface FilesInput {
   location: string;
   format: "parquet" | "csv" | "json";
   csv?: { header: boolean; delimiter: string };
-  /** Add a `filename` column naming each row's file. */
+  /** Add a `_ingestron_file` column naming each row's file. */
   withFile?: boolean;
 }
 
@@ -33,7 +36,7 @@ export interface FilesInput {
  * @example readFiles({ location: "./in/*.parquet", format: "parquet" }) // "read_parquet('./in/*.parquet')"
  */
 export function readFiles(input: FilesInput): string {
-  const options = input.withFile ? ["filename = true"] : [];
+  const options = input.withFile ? [`filename = ${literal(fileColumn)}`] : [];
   if (input.format === "csv") {
     const { header, delimiter } = input.csv ?? { header: true, delimiter: "," };
     options.unshift(`header = ${String(header)}`, `delim = ${literal(delimiter)}`);
