@@ -22,6 +22,7 @@ const allowed = [
   "eslint.config.js",
   "package.json",
   "pnpm-lock.yaml",
+  "runner",
   "scripts",
   "spec",
   "src",

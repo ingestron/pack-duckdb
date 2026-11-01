@@ -58,3 +58,17 @@ not in `inputs`.
 
 Columns, types, physical names and primary keys are used; quality,
 relationships and tags are not used yet; the other facts are documentation.
+
+## Running in Azure
+
+`request` returns a section titled `DuckDB job` when any `duckdb-table` table
+reads or publishes `abfss://` or `az://` paths, and nothing otherwise. It names
+the job with the public image `ghcr.io/ingestron/duckdb-runner:1` and
+`INGESTRON_SQL`, the storage roots (`abfss://<file system>@<account host>`) the
+job reads and writes, and something that starts it after each load.
+
+The runner (`runner/`) runs `INGESTRON_SQL` in a fresh database at
+`/tmp/ingestron.duckdb`, signed in with the job's managed identity
+(`AZURE_CLIENT_ID` for a user-assigned one). It refuses a `run.sql` that reads
+or writes local paths unless `INGESTRON_ALLOW_LOCAL=1`. Exit codes: 0 built,
+1 failed or local paths, 2 no `INGESTRON_SQL`.
