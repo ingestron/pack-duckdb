@@ -26,7 +26,7 @@ export function request(model: ResolvedModel): RequestSection[] {
       {
         title: "DuckDB job",
         lines: [
-          `In ${environment}, run.sql also reads or writes local paths, such as \`${local}\`, which a job in Azure cannot see: give this environment abfss:// paths only.`,
+          `In ${environment}, run.sql also reads or writes local paths, such as \`${local}\`, which a job in Azure cannot see: give this environment only paths in Azure storage.`,
         ],
       },
     ];

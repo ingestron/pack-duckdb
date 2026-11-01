@@ -17,8 +17,10 @@
 ## Files
 
 `run.sql` is a header comment, then `BEGIN TRANSACTION;`, each table's build
-statements in the model's order, `COMMIT;`, and then every table's `COPY`, so a
-run that fails publishes nothing new; `tables/<schema>.<table>.sql` holds each
+statements in the model's order, `COMMIT;`, and then every table's `COPY`. Run
+with `-bail` (as its header says) or by the runner, a run that fails while
+building publishes nothing; DuckDB's command line without `-bail` carries on
+after an error and commits what it built; `tables/<schema>.<table>.sql` holds each
 table's SQL alone, build then publish; `README.md` says
 how to run it. A model with no `duckdb-table` table gets no files. The SQL
 differs between environments only in the paths their values give.

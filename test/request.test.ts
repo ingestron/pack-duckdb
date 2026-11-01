@@ -32,7 +32,7 @@ describe("request", () => {
   it("says a job cannot run an environment that also uses local paths", () => {
     const { result } = generate(project({ input: cloud.input, published: "./published" }));
     expect(duckdb.request!(result.model!)[0]?.lines).toEqual([
-      "In dev, run.sql also reads or writes local paths, such as `./published/bronze.orders.parquet`, which a job in Azure cannot see: give this environment abfss:// paths only.",
+      "In dev, run.sql also reads or writes local paths, such as `./published/bronze.orders.parquet`, which a job in Azure cannot see: give this environment only paths in Azure storage.",
     ]);
   });
 });

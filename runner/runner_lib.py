@@ -5,9 +5,9 @@ from typing import Mapping
 
 _REMOTE = ("abfss://", "abfs://", "az://", "azure://")
 _LITERAL = r"'(?:[^']|'')*'"
-# A reader's first argument (one path or a list of them), a file read as a table, or COPY's target.
+# A reader's first argument (one path or a list of them), or COPY's target.
 _READ = re.compile(
-    rf"\b(?:read_\w+|parquet_scan)\s*\(\s*(\[[^\]]*\]|{_LITERAL})|\bFROM\s+({_LITERAL})|\)\s*TO\s+({_LITERAL})",
+    rf"\b(?:read_\w+|parquet_scan)\s*\(\s*(\[[^\]]*\]|{_LITERAL})|\)\s*TO\s+({_LITERAL})",
     re.IGNORECASE,
 )
 
@@ -27,37 +27,51 @@ def secret_sql(environ: Mapping[str, str]) -> str:
 
 
 def _masked(sql: str) -> str:
-    """The SQL with -- comments blanked and text in quotes replaced, at the same positions."""
+    """The SQL with comments blanked and the text of 'strings' and "names" replaced, at the same positions."""
     out: list[str] = []
-    index, quoted = 0, False
+    index, quote = 0, ""
     while index < len(sql):
         char = sql[index]
-        if quoted and sql.startswith("''", index):
-            out.append("xx")
-            index += 2
+        if quote:
+            if sql.startswith(quote * 2, index):
+                out.append("xx")
+                index += 2
+                continue
+            if char == quote:
+                quote = ""
+                out.append(char)
+            else:
+                out.append("x" if char != "\n" else char)
+            index += 1
             continue
-        if char == "'":
-            quoted = not quoted
-            out.append(char)
-        elif quoted:
-            out.append("x" if char != "\n" else char)
-        elif sql.startswith("--", index):
-            end = sql.find("\n", index)
-            end = len(sql) if end == -1 else end
-            out.append(" " * (end - index))
+        end = _comment_end(sql, index)
+        if end > index:
+            out.append("".join(c if c == "\n" else " " for c in sql[index:end]))
             index = end
             continue
-        else:
-            out.append(char)
+        if char in "'\"":
+            quote = char
+        out.append(char)
         index += 1
     return "".join(out)
+
+
+def _comment_end(sql: str, index: int) -> int:
+    """Where a comment starting at index ends, or index when none starts there."""
+    if sql.startswith("--", index):
+        end = sql.find("\n", index)
+        return len(sql) if end == -1 else end
+    if sql.startswith("/*", index):
+        end = sql.find("*/", index + 2)
+        return len(sql) if end == -1 else end + 2
+    return index
 
 
 def local_paths(sql: str) -> list[str]:
     """Every path the SQL reads or writes that is not in Azure storage, in order."""
     found: list[str] = []
     for match in _READ.finditer(_masked(sql)):
-        for group in range(1, 4):
+        for group in range(1, 3):
             if match.group(group) is not None:
                 text = sql[match.start(group) : match.end(group)]
                 found += [item[1:-1].replace("''", "'") for item in re.findall(_LITERAL, text)]
