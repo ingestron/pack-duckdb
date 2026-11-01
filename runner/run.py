@@ -44,8 +44,8 @@ def main(environ: Mapping[str, str]) -> int:
         local = local_paths(sql)
         if local and environ.get("INGESTRON_ALLOW_LOCAL") != "1":
             print(
-                "run.sql reads or writes local paths, which a cloud job cannot see: "
-                f"{', '.join(local[:3])}. Generate it for a cloud environment.",
+                "run.sql reads or writes paths a job in Azure cannot reach: "
+                f"{', '.join(local[:3])}. Generate it for an environment whose paths are abfss://.",
                 file=sys.stderr,
             )
             return 1

@@ -27,6 +27,8 @@ export interface FilesInput {
   location: string;
   format: "parquet" | "csv" | "json";
   csv?: { header: boolean; delimiter: string };
+  /** The columns' names in file order, for CSV files without a header. */
+  names?: string[];
   /** Add a `_ingestron_file` column naming each row's file. */
   withFile?: boolean;
 }
@@ -40,6 +42,8 @@ export function readFiles(input: FilesInput): string {
   if (input.format === "csv") {
     const { header, delimiter } = input.csv ?? { header: true, delimiter: "," };
     options.unshift(`header = ${String(header)}`, `delim = ${literal(delimiter)}`);
+    if (!header && input.names)
+      options.splice(2, 0, `names = [${input.names.map(literal).join(", ")}]`);
   }
   const reader = { parquet: "read_parquet", csv: "read_csv", json: "read_json_auto" }[input.format];
   return `${reader}(${[literal(input.location), ...options].join(", ")})`;

@@ -1,0 +1,4 @@
+# DuckDB for the runner, pinned by hash for linux/amd64 and linux/arm64.
+duckdb==1.5.6 \
+    --hash=sha256:bc9619ed7d4ffa117b5155d84b44794366bb6635178d78ed5e13a6024845c757 \
+    --hash=sha256:ce89a1025a5317ebe9c520876c48032b5247ac574865486648b1a004f6009875
