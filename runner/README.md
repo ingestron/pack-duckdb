@@ -21,6 +21,8 @@ Exit codes: `0` built, `1` the run failed or `run.sql` uses local paths, `2`
 job's managed identity.
 
 It is Python 3.12 with DuckDB 1.5.6, the engine the pack's tests use, and the
-`azure` extension installed at build time. The `runner` workflow tests it and,
-for a tag `runner-v<version>`, publishes `ghcr.io/ingestron/duckdb-runner:<version>`
-and `:1`.
+`azure` extension installed at build time. The `runner` workflow tests it on
+pull requests. For a tag `runner-v<version>` it publishes
+`ghcr.io/ingestron/duckdb-runner:<version>`. A final release such as `1.2.0`
+also moves its major tag, `:1`; a pre-release such as `1.2.0-rc.1` moves
+nothing.

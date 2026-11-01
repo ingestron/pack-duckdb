@@ -2,7 +2,7 @@
 # local paths a cloud job cannot see.
 import unittest
 
-from runner_lib import local_paths, remote, secret_sql
+from runner_lib import image_tags, local_paths, remote, secret_sql
 
 
 class SecretTest(unittest.TestCase):
@@ -36,6 +36,19 @@ class PathsTest(unittest.TestCase):
         self.assertEqual(local_paths(sql), [])
         self.assertTrue(remote("abfss://p@a.dfs.core.windows.net/run.sql"))
         self.assertFalse(remote("/work/run.sql"))
+
+
+class TagsTest(unittest.TestCase):
+    def test_a_release_moves_its_major_tag(self):
+        self.assertEqual(image_tags("1.0.0"), ["1.0.0", "1"])
+        self.assertEqual(image_tags("2.3.4"), ["2.3.4", "2"])
+
+    def test_a_pre_release_moves_no_tag(self):
+        self.assertEqual(image_tags("1.1.0-rc.1"), ["1.1.0-rc.1"])
+
+    def test_a_tag_that_is_not_a_version_is_refused(self):
+        with self.assertRaises(ValueError):
+            image_tags("latest")
 
 
 if __name__ == "__main__":
