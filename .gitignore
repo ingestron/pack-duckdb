@@ -5,3 +5,5 @@ coverage/
 *.tsbuildinfo
 build/
 .DS_Store
+runner/smoke/published/*.parquet
+runner/__pycache__/

@@ -1,0 +1,51 @@
+name: runner
+on:
+  pull_request:
+    paths: ["runner/**", ".github/workflows/runner.yml"]
+  push:
+    tags: ["runner-v*"]
+permissions:
+  contents: read
+jobs:
+  runner:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Unit tests
+        working-directory: runner
+        run: python -m unittest -v
+      - name: Build the image
+        run: docker build -t duckdb-runner:test runner
+      - name: Run the smoke project with local paths allowed
+        run: |
+          docker run --rm --network none --user "$(id -u)" -v "$PWD/runner/smoke:/work" -w /work \
+            -e INGESTRON_SQL=/work/run.sql -e INGESTRON_ALLOW_LOCAL=1 duckdb-runner:test
+          rows=$(docker run --rm --network none -v "$PWD/runner/smoke:/work" -w /work --entrypoint python \
+            duckdb-runner:test -c "import duckdb; print(duckdb.sql(\"select count(*) from 'published/bronze.orders.parquet'\").fetchone()[0])")
+          test "$rows" = 3
+      - name: Refuse local paths in a cloud run
+        run: |
+          set +e
+          docker run --rm --network none -v "$PWD/runner/smoke:/work" -w /work \
+            -e INGESTRON_SQL=/work/run.sql duckdb-runner:test
+          test $? = 1
+      - name: Refuse a run with no SQL named
+        run: |
+          set +e
+          docker run --rm --network none duckdb-runner:test
+          test $? = 2
+      - name: Publish to ghcr.io
+        if: startsWith(github.ref, 'refs/tags/runner-v')
+        run: |
+          version="${GITHUB_REF_NAME#runner-v}"
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+          for tag in "$version" 1; do
+            docker tag duckdb-runner:test "ghcr.io/ingestron/duckdb-runner:$tag"
+            docker push "ghcr.io/ingestron/duckdb-runner:$tag"
+          done
