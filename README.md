@@ -26,10 +26,12 @@ SQL alone. `ingestron apply` puts them in `build/<environment>/`, or in
 `run.sql` from the project folder with the DuckDB command line, for example:
 
 ```sh
-duckdb ingestron.duckdb < build/dev/run.sql
+duckdb -bail ingestron.duckdb -c ".read build/dev/run.sql"
 ```
 
-Running again is safe in every mode, and a contract that gains columns keeps
+Tables are built in one transaction and published after it commits, so a run
+that fails publishes nothing new. Running again is safe in every mode, and a
+contract that gains columns keeps
 loading: new columns are added to the table. A changed primary key or column
 type needs the table built again: delete `ingestron.duckdb` and run again,
 which reloads everything from the files. In `upsert`, a key's row is the last by
@@ -78,7 +80,8 @@ In an environment whose files are in Azure storage, `run.sql` reads and writes
 Each run starts with an empty database, reads every landed file, rebuilds every
 table and publishes it, signed in as the job's managed identity; nothing is
 kept between runs, so running again is always safe. Your deploy step copies
-`build/<environment>/duckdb/` to storage, and the job's `INGESTRON_SQL` names
+`build/<environment>/duckdb/` (or `build/<environment>/` when DuckDB is the
+only pack) to storage, and the job's `INGESTRON_SQL` names
 the copied `run.sql`. ADF's `after_copy` can start the job after each load.
 `ingestron request` lists the job and its storage access. The image is
 described in [runner/README.md](runner/README.md).

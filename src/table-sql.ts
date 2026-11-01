@@ -26,19 +26,28 @@ export function tableSql(
   table: ResolvedTable,
   resolvedTypes: boolean,
 ): string {
-  const target = {
-    table,
-    name: `${quote(table.fullName.schema)}.${quote(table.fullName.table)}`,
-    resolvedTypes,
-  };
-  const keep = table.transform ? transformSql(model, target) : filesSql(target);
-  const columns = table.contract.columns.map((column) => quote(column.name)).join(", ");
-  return [
-    `CREATE SCHEMA IF NOT EXISTS ${quote(table.fullName.schema)};`,
-    ...keep,
-    `COPY (SELECT ${columns} FROM ${target.name}) TO ${literal(table.store!.output!.location)} (FORMAT parquet);`,
-  ].join("\n");
+  return [...buildSql(model, table, resolvedTypes), publishSql(table)].join("\n");
 }
+
+/** The statements that keep the table in the database. */
+export function buildSql(
+  model: ResolvedModel,
+  table: ResolvedTable,
+  resolvedTypes: boolean,
+): string[] {
+  const target = { table, name: nameOf(table), resolvedTypes };
+  const keep = table.transform ? transformSql(model, target) : filesSql(target);
+  return [`CREATE SCHEMA IF NOT EXISTS ${quote(table.fullName.schema)};`, ...keep];
+}
+
+/** The COPY that publishes the contract's columns as Parquet. */
+export function publishSql(table: ResolvedTable): string {
+  const columns = table.contract.columns.map((column) => quote(column.name)).join(", ");
+  return `COPY (SELECT ${columns} FROM ${nameOf(table)}) TO ${literal(table.store!.output!.location)} (FORMAT parquet);`;
+}
+
+const nameOf = (table: ResolvedTable) =>
+  `${quote(table.fullName.schema)}.${quote(table.fullName.table)}`;
 
 function filesSql(target: Target): string[] {
   const ingest = target.table.ingest!;
@@ -47,6 +56,9 @@ function filesSql(target: Target): string[] {
     location: output.location,
     format: output.format === "csv" || output.format === "json" ? output.format : "parquet",
     csv: ingest.settings.csv as FilesInput["csv"],
+    names: target.table.contract.columns.map((column) =>
+      !ingest.renamed && column.physicalName ? column.physicalName : column.name,
+    ),
   };
   const select = selectColumns(target.table.contract.columns, {
     renamed: ingest.renamed,
@@ -110,7 +122,10 @@ function transformSql(model: ResolvedModel, target: Target): string[] {
       const found = model.tables.find((item) => item.name === input);
       return found ? `${quote(found.fullName.schema)}.${quote(found.fullName.table)}` : written;
     });
-  const columns = target.table.contract.columns.map((column) => quote(column.name)).join(", ");
+  const columns = selectColumns(target.table.contract.columns, {
+    renamed: true,
+    resolvedTypes: target.resolvedTypes,
+  });
   // The code sits on its own lines, so a trailing comment cannot swallow the bracket.
   return [
     `CREATE OR REPLACE TABLE ${target.name} AS SELECT ${columns} FROM (\n${code}\n) AS "source";`,

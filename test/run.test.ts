@@ -112,7 +112,7 @@ describe("transforms", () => {
       project(where, "{}", { "counts.yaml": transform, "counts-contract.yaml": counts }),
     );
     expect(sql).toContain(
-      'CREATE OR REPLACE TABLE "silver"."counts" AS SELECT "name", "n" FROM (\nSELECT name, count(*) AS n FROM "bronze"."orders" GROUP BY name\n) AS "source";',
+      'CREATE OR REPLACE TABLE "silver"."counts" AS SELECT CAST("name" AS VARCHAR) AS "name", CAST("n" AS BIGINT) AS "n" FROM (\nSELECT name, count(*) AS n FROM "bronze"."orders" GROUP BY name\n) AS "source";',
     );
     const database = join(where.root, "ingestron.duckdb");
     expect(await execute(database, sql, "SELECT name, n FROM silver.counts ORDER BY name")).toEqual(
@@ -128,10 +128,21 @@ describe("environments", () => {
   it("write the same SQL apart from the paths their values give", () => {
     const one = folder();
     const two = folder();
-    const first = runSql(project(one));
-    const second = runSql(project(two));
+    const files = project(one, "{}", {
+      "project.yaml": `id: shop\nenvironments:\n  dev: {}\n  prod: { values: { input: "${two.input}", published: "${two.published}" } }\nvalues: { input: "${one.input}", published: "${one.published}" }\nimports: ['*.yaml']\n`,
+      "platform.yaml":
+        'apiVersion: ingestron.io/v1\nkind: Platform\nid: local\nsettings:\n  duckdb-table: { published: "${values.published}" }\n',
+      "shop.yaml":
+        'apiVersion: ingestron.io/v1\nkind: Connection\nid: shop\nconnector: files\nconnectivity: public\nsettings: { path: "${values.input}" }\n',
+    });
+    const sqlOf = (environment: string) =>
+      generate(files, undefined, environment).files["run.sql"] ?? "";
     const normalised = (sql: string, where: typeof one) =>
       sql.replaceAll(where.input, "<in>").replaceAll(where.published, "<published>");
-    expect(normalised(first, one)).toBe(normalised(second, two));
+    const { result } = generate(files, undefined, "dev");
+    expect(result.diagnostics).toEqual([]);
+    const dev = sqlOf("dev");
+    expect(dev).toContain(one.published);
+    expect(normalised(sqlOf("prod"), two).replace("(prod)", "(dev)")).toBe(normalised(dev, one));
   });
 });
