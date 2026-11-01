@@ -26,3 +26,20 @@ def local_paths(sql: str) -> list[str]:
     """Every path the SQL reads or writes that is not remote, in order."""
     found = [(read or written).replace("''", "'") for read, written in _PATHS.findall(sql)]
     return [path for path in found if not remote(path)]
+
+
+_VERSION = re.compile(r"^(\d+)\.\d+\.\d+(-[0-9A-Za-z.-]+)?$")
+
+
+def image_tags(version: str) -> list[str]:
+    """The tags a runner-v<version> release pushes: the version, and its major for a final release only."""
+    match = _VERSION.match(version)
+    if not match:
+        raise ValueError(f'"{version}" is not a version such as 1.0.0')
+    return [version] if match.group(2) else [version, match.group(1)]
+
+
+if __name__ == "__main__":
+    import sys
+
+    print(" ".join(image_tags(sys.argv[1])))
