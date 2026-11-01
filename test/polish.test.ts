@@ -5,7 +5,7 @@ import { join } from "node:path";
 import type { Pack } from "@ingestron/definitions";
 import { describe, expect, it } from "vitest";
 import { duckdb } from "../src/index.js";
-import { execute, folder, generate, project, runSql, writeParquet } from "./project.js";
+import { contract, execute, folder, generate, project, runSql, writeParquet } from "./project.js";
 
 const counts = (code: string) => ({
   "counts.yaml": [
@@ -134,6 +134,20 @@ describe("types and names", () => {
 });
 
 describe("settings DuckDB cannot honour", () => {
+  it("accepts sequence_by by a column's physicalName, in any case", () => {
+    const files = project(folder(), "{ mode: upsert, sequence_by: SEQ }", {
+      "orders.yaml": contract().replace(
+        "{ name: seq, logicalType: integer }",
+        "{ name: seq, logicalType: integer, physicalName: Sequence }",
+      ),
+    });
+    expect(messages(files)).toEqual([]);
+    const byPhysical = project(folder(), "{ mode: upsert, sequence_by: Sequence }", {
+      "orders.yaml": files["orders.yaml"]!,
+    });
+    expect(messages(byPhysical)).toEqual([]);
+  });
+
   it("refuses sequence_by that is not a contract column", () => {
     expect(messages(project(folder(), "{ mode: upsert, sequence_by: updated }"))).toContain(
       '"duckdb-table" for table "orders": sequence_by "updated" is not a column of the contract; use one of id, name, seq.',
@@ -149,6 +163,14 @@ describe("settings DuckDB cannot honour", () => {
   it("refuses files in a format DuckDB does not read", () => {
     expect(messages(landed("{}"), [duckdb, lander("delta", "add")])).toContain(
       '"duckdb-table" for table "orders": "land" lands delta files; DuckDB reads parquet, csv and json.',
+    );
+  });
+});
+
+describe("stopping at the first error", () => {
+  it("says in run.sql to run it with -bail", () => {
+    expect(runSql(project(folder()))).toContain(
+      '-- Run with -bail, such as duckdb -bail ingestron.duckdb -c ".read run.sql", so a run that fails while building publishes nothing.',
     );
   });
 });

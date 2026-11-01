@@ -147,13 +147,18 @@ function storeProblems(table: ResolvedTable): string[] {
 
 function keyProblems(table: ResolvedTable): string[] {
   const { mode, sequence_by: sequence } = table.store!.settings;
-  const columns = table.contract.columns.map((column) => column.name);
+  const columns = table.contract.columns;
   const problems: string[] = [];
   if (mode === "upsert" && table.contract.primaryKey.length === 0)
     problems.push("upsert needs the contract's primaryKey");
-  if (typeof sequence === "string" && !columns.includes(sequence))
+  // DuckDB names are case-insensitive, and the files may hold a column's physicalName.
+  const known = columns.flatMap((column) => [column.name, column.physicalName ?? column.name]);
+  if (
+    typeof sequence === "string" &&
+    !known.some((name) => name.toLowerCase() === sequence.toLowerCase())
+  )
     problems.push(
-      `sequence_by "${sequence}" is not a column of the contract; use one of ${columns.join(", ")}`,
+      `sequence_by "${sequence}" is not a column of the contract; use one of ${columns.map((column) => column.name).join(", ")}`,
     );
   return problems;
 }

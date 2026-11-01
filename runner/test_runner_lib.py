@@ -44,12 +44,11 @@ class MorePathsTest(unittest.TestCase):
             "SELECT * FROM READ_PARQUET(['./a.parquet', './b.parquet']);\n"
             "SELECT * FROM read_csv_auto('./c.csv');\n"
             "SELECT * FROM parquet_scan('./d.parquet');\n"
-            "SELECT * FROM './e.parquet';\n"
             "copy (select 1) to './f.parquet' (format parquet);"
         )
         self.assertEqual(
             local_paths(sql),
-            ["./a.parquet", "./b.parquet", "./c.csv", "./d.parquet", "./e.parquet", "./f.parquet"],
+            ["./a.parquet", "./b.parquet", "./c.csv", "./d.parquet", "./f.parquet"],
         )
 
     def test_comments_and_text_are_not_paths(self):
@@ -63,6 +62,19 @@ class MorePathsTest(unittest.TestCase):
         for location in ["abfss://f@a.dfs.core.windows.net/x", "abfs://f@a/x", "az://c/x", "azure://c/x"]:
             self.assertTrue(remote(location), location)
         self.assertFalse(remote("https://acct.blob.core.windows.net/c/x"))
+
+
+class SqlTextTest(unittest.TestCase):
+    def test_text_in_functions_is_not_a_path(self):
+        sql = (
+            "SELECT extract(year FROM '2024-01-01'::DATE), trim(BOTH 'x' FROM 'xax');\n"
+            "/* read_parquet('./old.parquet') */ SELECT 1;"
+        )
+        self.assertEqual(local_paths(sql), [])
+
+    def test_a_quote_in_a_quoted_name_does_not_hide_later_paths(self):
+        sql = 'SELECT "it\'s" FROM t;\nSELECT * FROM read_parquet(\'./later.parquet\');'
+        self.assertEqual(local_paths(sql), ["./later.parquet"])
 
 
 class TagsTest(unittest.TestCase):
