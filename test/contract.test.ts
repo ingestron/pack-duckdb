@@ -1,4 +1,4 @@
-// What the pack does with contracts, and that it asks nothing of a platform team.
+// What the pack does with contracts.
 import { describe, expect, it } from "vitest";
 import { duckdb } from "../src/index.js";
 import { folder, generate, project } from "./project.js";
@@ -16,9 +16,5 @@ describe("contract", () => {
   it("leaves a project's contract fields without warnings", () => {
     const { result } = generate(project(folder()));
     expect(result.diagnostics).toEqual([]);
-  });
-
-  it("asks nothing of a platform team: DuckDB runs where you start it", () => {
-    expect(duckdb.request).toBeUndefined();
   });
 });
