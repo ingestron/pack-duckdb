@@ -27,15 +27,42 @@ class PathsTest(unittest.TestCase):
         )
         self.assertEqual(local_paths(sql), ["./samples/orders/*.parquet"])
 
-    def test_cloud_paths_are_not_local(self):
+    def test_only_azure_paths_are_remote(self):
         sql = (
             "SELECT * FROM read_csv('az://c/orders.csv', header = true);\n"
             "SELECT * FROM read_json_auto('https://acct.blob.core.windows.net/c/x.json');\n"
             "COPY (SELECT 1) TO 'abfss://p@a.dfs.core.windows.net/x.parquet' (FORMAT parquet);"
         )
-        self.assertEqual(local_paths(sql), [])
+        self.assertEqual(local_paths(sql), ["https://acct.blob.core.windows.net/c/x.json"])
         self.assertTrue(remote("abfss://p@a.dfs.core.windows.net/run.sql"))
         self.assertFalse(remote("/work/run.sql"))
+
+
+class MorePathsTest(unittest.TestCase):
+    def test_every_reader_and_a_list_of_files(self):
+        sql = (
+            "SELECT * FROM READ_PARQUET(['./a.parquet', './b.parquet']);\n"
+            "SELECT * FROM read_csv_auto('./c.csv');\n"
+            "SELECT * FROM parquet_scan('./d.parquet');\n"
+            "SELECT * FROM './e.parquet';\n"
+            "copy (select 1) to './f.parquet' (format parquet);"
+        )
+        self.assertEqual(
+            local_paths(sql),
+            ["./a.parquet", "./b.parquet", "./c.csv", "./d.parquet", "./e.parquet", "./f.parquet"],
+        )
+
+    def test_comments_and_text_are_not_paths(self):
+        sql = (
+            "-- read_parquet('./old.parquet')\n"
+            "SELECT 'GO TO ' AS a, 'see read_csv(''./x'')' AS b;"
+        )
+        self.assertEqual(local_paths(sql), [])
+
+    def test_azure_prefixes_are_remote_and_the_web_is_not(self):
+        for location in ["abfss://f@a.dfs.core.windows.net/x", "abfs://f@a/x", "az://c/x", "azure://c/x"]:
+            self.assertTrue(remote(location), location)
+        self.assertFalse(remote("https://acct.blob.core.windows.net/c/x"))
 
 
 class TagsTest(unittest.TestCase):

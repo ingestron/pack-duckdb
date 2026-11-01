@@ -16,6 +16,9 @@ const csv = {
   },
 };
 
+/** A folder without its trailing slashes or (on Windows) backslashes. */
+const trimmed = (folder: unknown) => String(folder).replace(/[\\/]+$/, "");
+
 const object = (table: ResolvedTable) => table.ingest!.object.replace(/^\/+/, "");
 
 /** Reads the files another pack's method lands, from a local folder; chosen by runs-on. */
@@ -40,7 +43,7 @@ export const duckdbLanded: Method = {
     },
   },
   output: (table) => ({
-    location: `${String(table.ingest!.settings.landing).replace(/\/+$/, "")}/${object(table)}/*.parquet`,
+    location: `${trimmed(table.ingest!.settings.landing)}/${object(table)}/*.parquet`,
     format: "parquet",
     loads: "add",
   }),
@@ -72,7 +75,7 @@ export const duckdbFiles: Method = {
       ? []
       : ["the files connection needs a path, the folder its files are in"],
   output: (table) => {
-    const path = String(table.ingest!.connection.settings.path ?? "").replace(/\/+$/, "");
+    const path = trimmed(table.ingest!.connection.settings.path ?? "");
     return {
       location: `${path}/${object(table)}`,
       format: table.ingest!.settings.format as "parquet" | "csv" | "json",
@@ -118,7 +121,7 @@ export const duckdbTable: Method = {
     },
   },
   output: (table) => ({
-    location: `${String(table.store!.settings.published).replace(/\/+$/, "")}/${table.fullName.schema}.${table.fullName.table}.parquet`,
+    location: `${trimmed(table.store!.settings.published)}/${table.fullName.schema}.${table.fullName.table}.parquet`,
     format: "parquet",
     loads: "replace",
   }),
@@ -133,13 +136,40 @@ export const duckdbTable: Method = {
         (expectation) =>
           `DuckDB tables check no rows yet, so the expectation "${expectation.name}" would not be checked; remove it`,
       );
-    const noKey =
-      table.store!.settings.mode === "upsert" && table.contract.primaryKey.length === 0
-        ? ["upsert needs the contract's primaryKey"]
-        : [];
-    return [...noKey, ...unchecked];
+    return [...storeProblems(table), ...unchecked];
   },
 };
+
+/** Settings duckdb-table cannot honour for this table: its mode, key and landed files. */
+function storeProblems(table: ResolvedTable): string[] {
+  return [...keyProblems(table), ...filesProblems(table)];
+}
+
+function keyProblems(table: ResolvedTable): string[] {
+  const { mode, sequence_by: sequence } = table.store!.settings;
+  const columns = table.contract.columns.map((column) => column.name);
+  const problems: string[] = [];
+  if (mode === "upsert" && table.contract.primaryKey.length === 0)
+    problems.push("upsert needs the contract's primaryKey");
+  if (typeof sequence === "string" && !columns.includes(sequence))
+    problems.push(
+      `sequence_by "${sequence}" is not a column of the contract; use one of ${columns.join(", ")}`,
+    );
+  return problems;
+}
+
+function filesProblems(table: ResolvedTable): string[] {
+  const output = table.transform ? undefined : table.ingest?.output;
+  if (!output) return [];
+  const method = table.ingest!.method;
+  if (!["parquet", "csv", "json"].includes(output.format))
+    return [`"${method}" lands ${output.format} files; DuckDB reads parquet, csv and json`];
+  if (table.store!.settings.mode === "append" && output.loads === "replace")
+    return [
+      `append reads each file once, but "${method}" replaces its file each run, so later loads would be missed; use replace or upsert`,
+    ];
+  return [];
+}
 
 const reference = /\{\{\s*tables\.([A-Za-z0-9_-]+)\s*\}\}/g;
 

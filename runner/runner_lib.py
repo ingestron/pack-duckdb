@@ -3,13 +3,17 @@
 import re
 from typing import Mapping
 
-_REMOTE = ("abfss://", "az://", "https://")
-# A quoted path read by read_parquet, read_csv or read_json_auto, or written by COPY … TO.
-_PATHS = re.compile(r"(?:read_parquet|read_csv|read_json_auto)\(\s*'((?:[^']|'')*)'|\bTO\s+'((?:[^']|'')*)'")
+_REMOTE = ("abfss://", "abfs://", "az://", "azure://")
+_LITERAL = r"'(?:[^']|'')*'"
+# A reader's first argument (one path or a list of them), a file read as a table, or COPY's target.
+_READ = re.compile(
+    rf"\b(?:read_\w+|parquet_scan)\s*\(\s*(\[[^\]]*\]|{_LITERAL})|\bFROM\s+({_LITERAL})|\)\s*TO\s+({_LITERAL})",
+    re.IGNORECASE,
+)
 
 
 def remote(location: str) -> bool:
-    """True when the location is in Azure storage or on the web, not on the job's disk."""
+    """True when the location is in Azure storage, which the azure extension reads."""
     return location.startswith(_REMOTE)
 
 
@@ -22,9 +26,41 @@ def secret_sql(environ: Mapping[str, str]) -> str:
     return "CREATE OR REPLACE SECRET ingestron (TYPE azure, PROVIDER credential_chain, CHAIN 'managed_identity');"
 
 
+def _masked(sql: str) -> str:
+    """The SQL with -- comments blanked and text in quotes replaced, at the same positions."""
+    out: list[str] = []
+    index, quoted = 0, False
+    while index < len(sql):
+        char = sql[index]
+        if quoted and sql.startswith("''", index):
+            out.append("xx")
+            index += 2
+            continue
+        if char == "'":
+            quoted = not quoted
+            out.append(char)
+        elif quoted:
+            out.append("x" if char != "\n" else char)
+        elif sql.startswith("--", index):
+            end = sql.find("\n", index)
+            end = len(sql) if end == -1 else end
+            out.append(" " * (end - index))
+            index = end
+            continue
+        else:
+            out.append(char)
+        index += 1
+    return "".join(out)
+
+
 def local_paths(sql: str) -> list[str]:
-    """Every path the SQL reads or writes that is not remote, in order."""
-    found = [(read or written).replace("''", "'") for read, written in _PATHS.findall(sql)]
+    """Every path the SQL reads or writes that is not in Azure storage, in order."""
+    found: list[str] = []
+    for match in _READ.finditer(_masked(sql)):
+        for group in range(1, 4):
+            if match.group(group) is not None:
+                text = sql[match.start(group) : match.end(group)]
+                found += [item[1:-1].replace("''", "'") for item in re.findall(_LITERAL, text)]
     return [path for path in found if not remote(path)]
 
 
