@@ -29,8 +29,8 @@ SQL alone. `ingestron apply` puts them in `build/<environment>/`, or in
 duckdb -bail ingestron.duckdb -c ".read build/dev/run.sql"
 ```
 
-Tables are built in one transaction and published after it commits, so a run
-that fails publishes nothing new. Running again is safe in every mode, and a
+Tables are built in one transaction and published after it commits; run with
+`-bail`, as above, so a run that fails while building publishes nothing. Running again is safe in every mode, and a
 contract that gains columns keeps
 loading: new columns are added to the table. A changed primary key or column
 type needs the table built again: delete `ingestron.duckdb` and run again,

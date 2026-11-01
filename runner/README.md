@@ -14,7 +14,7 @@ so running again is always safe.
 | ----------------------- | -------------------------------------------------------------------------------------------------------- |
 | `INGESTRON_SQL`         | Where `run.sql` is, such as `abfss://deploy@<account>.dfs.core.windows.net/sales/dev/run.sql`. Required. |
 | `AZURE_CLIENT_ID`       | The client ID of a user-assigned managed identity. Without it, the job's own identity is used.           |
-| `INGESTRON_ALLOW_LOCAL` | `1` lets `run.sql` read and write local paths, for tests only.                                           |
+| `INGESTRON_ALLOW_LOCAL` | `1` lets `run.sql` read and write paths outside Azure storage, for tests only.                           |
 
 Exit codes: `0` built, `1` the run failed or `run.sql` uses local paths, `2`
 `INGESTRON_SQL` is missing. The image holds no secrets: it signs in with the
