@@ -2,7 +2,7 @@
 // its transform's query, then publish the contract's columns as Parquet.
 // Tables already in the database gain new contract columns, and rows are
 // inserted by name, so a changed contract keeps loading.
-import type { ResolvedModel, ResolvedTable } from "@ingestron/definitions";
+import type { Column, ResolvedModel, ResolvedTable } from "@ingestron/definitions";
 import {
   fileColumn,
   literal,
@@ -40,9 +40,22 @@ export function buildSql(
   return [`CREATE SCHEMA IF NOT EXISTS ${quote(table.fullName.schema)};`, ...keep];
 }
 
-/** The COPY that publishes the contract's columns as Parquet. */
+/**
+ * The table's columns: the contract's, then those its landed files carry
+ * beyond it (such as ADF's audit columns). A transform's table has only the contract's.
+ */
+export function columnsOf(table: ResolvedTable): Column[] {
+  const extra = table.transform
+    ? []
+    : ((table.ingest?.output as { columns?: Column[] } | undefined)?.columns ?? []);
+  return [...table.contract.columns, ...extra];
+}
+
+/** The COPY that publishes the table's columns as Parquet. */
 export function publishSql(table: ResolvedTable): string {
-  const columns = table.contract.columns.map((column) => quote(column.name)).join(", ");
+  const columns = columnsOf(table)
+    .map((column) => quote(column.name))
+    .join(", ");
   return `COPY (SELECT ${columns} FROM ${nameOf(table)}) TO ${literal(table.store!.output!.location)} (FORMAT parquet);`;
 }
 
@@ -56,11 +69,11 @@ function filesSql(target: Target): string[] {
     location: output.location,
     format: output.format === "csv" || output.format === "json" ? output.format : "parquet",
     csv: ingest.settings.csv as FilesInput["csv"],
-    names: target.table.contract.columns.map((column) =>
+    names: columnsOf(target.table).map((column) =>
       !ingest.renamed && column.physicalName ? column.physicalName : column.name,
     ),
   };
-  const select = selectColumns(target.table.contract.columns, {
+  const select = selectColumns(columnsOf(target.table), {
     renamed: ingest.renamed,
     resolvedTypes: target.resolvedTypes,
   });
@@ -108,7 +121,7 @@ function addColumns(target: Target): string[] {
 }
 
 function definitions({ table, resolvedTypes }: Target): string[] {
-  return table.contract.columns.map(
+  return columnsOf(table).map(
     (column) => `${quote(column.name)} ${typeOf(column, { resolvedTypes })}`,
   );
 }

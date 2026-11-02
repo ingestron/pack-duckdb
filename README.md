@@ -41,6 +41,10 @@ twice.
 Expectations written in a flow are refused, since DuckDB tables check no rows
 yet; the contract's quality rules are reported as not checked.
 
+Columns the landed files carry beyond the contract, such as ADF's audit
+columns, are kept after the contract's columns, typed by their `logicalType`,
+and published with them.
+
 ## Run a cloud project locally
 
 An environment that names `runs-on: duckdb` runs a project's tables locally:
