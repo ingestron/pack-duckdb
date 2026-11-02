@@ -1,6 +1,6 @@
 {
   "name": "@ingestron/pack-duckdb",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "DuckDB methods for Ingestron: load files into tables, run transforms and publish Parquet, on a laptop or wherever DuckDB runs.",
   "license": "Apache-2.0",
   "author": "IntentLabs <hello@ingestron.io>",
