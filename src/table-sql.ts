@@ -72,6 +72,8 @@ function filesSql(target: Target): string[] {
     names: columnsOf(target.table).map((column) =>
       !ingest.renamed && column.physicalName ? column.physicalName : column.name,
     ),
+    // Files landed before the extra columns were added read them as NULL.
+    unionByName: columnsOf(target.table).length > target.table.contract.columns.length,
   };
   const select = selectColumns(columnsOf(target.table), {
     renamed: ingest.renamed,

@@ -65,6 +65,28 @@ describe("extra columns the landed files carry", () => {
       expect(sql).toContain('"_loaded_at", "_run_id" FROM "bronze"."orders") TO');
     });
 
+  for (const store of ["{}", "{ mode: append }", "{ mode: upsert }"])
+    it(`load files landed before the columns were added (${store})`, async () => {
+      const where = folder();
+      await writeQuery(
+        join(where.input, "orders/a.parquet"),
+        "SELECT 1 AS id, 'a' AS name, 1 AS seq",
+      );
+      await writeQuery(
+        join(where.input, "orders/b.parquet"),
+        "SELECT 2 AS id, 'b' AS name, 2 AS seq, '2026-11-02T03:43:39.1234567Z' AS _loaded_at, 'run-2' AS _run_id",
+      );
+      const rows = await execute(
+        join(where.root, "ingestron.duckdb"),
+        landed(where, true, store),
+        'SELECT id, CAST(_loaded_at AS VARCHAR) AS at, _run_id FROM "bronze"."orders" ORDER BY id',
+      );
+      expect(rows).toEqual([
+        { id: "1", at: null, _run_id: null },
+        { id: "2", at: "2026-11-02 03:43:39.123456", _run_id: "run-2" },
+      ]);
+    });
+
   it("leave run.sql as it was when none are declared", () => {
     const where = folder();
     expect(landed(where, false)).not.toContain("_loaded_at");
