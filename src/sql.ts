@@ -31,6 +31,8 @@ export interface FilesInput {
   names?: string[];
   /** Add a `_ingestron_file` column naming each row's file. */
   withFile?: boolean;
+  /** Match columns by name across files, so files without some columns read them as NULL. */
+  unionByName?: boolean;
 }
 
 /**
@@ -38,7 +40,10 @@ export interface FilesInput {
  * @example readFiles({ location: "./in/*.parquet", format: "parquet" }) // "read_parquet('./in/*.parquet')"
  */
 export function readFiles(input: FilesInput): string {
-  const options = input.withFile ? [`filename = ${literal(fileColumn)}`] : [];
+  const options = [
+    ...(input.withFile ? [`filename = ${literal(fileColumn)}`] : []),
+    ...(input.unionByName ? ["union_by_name = true"] : []),
+  ];
   if (input.format === "csv") {
     const { header, delimiter } = input.csv ?? { header: true, delimiter: "," };
     options.unshift(`header = ${String(header)}`, `delim = ${literal(delimiter)}`);
