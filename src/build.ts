@@ -34,38 +34,55 @@ export function build(model: ResolvedModel): Record<string, string> {
   };
 }
 
-function readme(model: ResolvedModel, tables: ResolvedTable[]): string {
-  const { id, environment } = model.project;
-  const folder = `build/${environment}${model.standard.packs.length > 1 ? "/duckdb" : ""}`;
-  const inAzure = tables.some(
-    (table) => remote(table.store?.output?.location) || remote(table.ingest?.output?.location),
-  );
-  const job = inAzure
-    ? `
-In Azure, a Container Apps job runs \`run.sql\` with the public image
+/** Whether the paths are all in Azure, all local, or both; a table with no path counts for neither. */
+function placeOf(tables: ResolvedTable[]): "azure" | "local" | "mixed" {
+  const locations = tables.flatMap((table) => [
+    table.ingest?.output?.location,
+    table.store?.output?.location,
+  ]);
+  const paths = locations.filter((location): location is string => location !== undefined);
+  if (!paths.some(remote)) return "local";
+  return paths.every(remote) ? "azure" : "mixed";
+}
+
+const job = `A Container Apps job runs \`run.sql\` with the public image
 \`ghcr.io/ingestron/duckdb-runner:1\`: copy this folder to storage and set the
 job's \`INGESTRON_SQL\` to the copied \`run.sql\`. \`ingestron request\` lists
-what the job needs.
-`
-    : "";
-  return `# DuckDB SQL for ${id} (${environment})
+what the job needs. \`run.sql\` has no Azure sign-in of its own, so on a laptop
+it cannot read these paths; the job signs in as its managed identity.`;
 
-Run \`run.sql\` from the project folder, where its paths start, with the DuckDB
-command line; \`-bail\` stops at the first error:
+const mixed = `This environment reads or writes both local paths and paths in Azure storage,
+and local paths cannot run in Azure: a job there cannot see them. Give it only
+paths in Azure storage, or only local paths. \`run.sql\` has no Azure sign-in of
+its own.`;
 
-\`\`\`sh
-duckdb -bail ingestron.duckdb -c ".read ${folder}/run.sql"
-\`\`\`
+const azureRun = `The job builds every table in one transaction, publishes each to its path, and
+stops without publishing if a table fails to build. Running it again is safe.
+\`tables/\` holds each table's SQL alone.`;
 
-It builds every table in \`ingestron.duckdb\` in one transaction, then
+const laptopRun = (
+  tableCommand: string,
+) => `It builds every table in \`ingestron.duckdb\` in one transaction, then
 publishes each one to the \`published\` folder as \`<schema>.<table>.parquet\`;
 the folder must exist. With \`-bail\` (or the Azure job's runner), a run that
 fails while building publishes nothing; without it, DuckDB carries on after an
-error and commits what it built. Running it again
-is safe. \`tables/\` holds each table's SQL alone, to run one table again:
+error and commits what it built. Running it again is safe. \`tables/\` holds
+each table's SQL alone, to run one table again:\n\n${tableCommand}`;
 
-\`\`\`sh
-duckdb -bail ingestron.duckdb -c ".read ${folder}/tables/<schema>.<table>.sql"
-\`\`\`
-${job}`;
+function readme(model: ResolvedModel, tables: ResolvedTable[]): string {
+  const { id, environment } = model.project;
+  const folder = `build/${environment}${model.standard.packs.length > 1 ? "/duckdb" : ""}`;
+  const place = placeOf(tables);
+  const command = (file: string) =>
+    `\`\`\`sh\nduckdb -bail ingestron.duckdb -c ".read ${folder}/${file}"\n\`\`\``;
+  const sections = [
+    `# DuckDB SQL for ${id} (${environment})`,
+    { azure: job, mixed, local: "" }[place],
+    place === "azure"
+      ? ""
+      : `Run \`run.sql\` from the project folder, where its paths start, with the DuckDB
+command line; \`-bail\` stops at the first error:\n\n${command("run.sql")}`,
+    place === "azure" ? azureRun : laptopRun(command("tables/<schema>.<table>.sql")),
+  ];
+  return `${sections.filter(Boolean).join("\n\n")}\n`;
 }
