@@ -84,6 +84,36 @@ describe("the generated README when only some paths are in Azure", () => {
   );
 });
 
+describe("the laptop run text in the generated README", () => {
+  const flat = (where: { input: string; published: string }) => text(where).replace(/\s+/g, " ");
+
+  it("does not mention the Azure job's runner when the paths are local or mixed", () => {
+    for (const readme of [
+      flat(folder()),
+      flat({ input: azureInput, published: folder().published }),
+      flat({ input: folder().input, published: azurePublished }),
+    ]) {
+      expect(readme).toContain("With `-bail`, a run that fails while building publishes nothing");
+      expect(readme).not.toContain("runner");
+    }
+  });
+
+  it("says each table goes to its path when published is in Azure, with no folder to create", () => {
+    const readme = flat({ input: folder().input, published: azurePublished });
+    expect(readme).toContain("then publishes each to its path");
+    expect(readme).not.toContain("`published` folder");
+    expect(readme).not.toContain("must exist");
+  });
+
+  it("says each table goes to the published folder, which must exist, when published is local", () => {
+    for (const where of [folder(), { input: azureInput, published: folder().published }]) {
+      const readme = flat(where);
+      expect(readme).toContain("publishes each one to the `published` folder");
+      expect(readme).toContain("the folder must exist");
+    }
+  });
+});
+
 describe("the generated README when every path is local", () => {
   it("has the laptop command and no job paragraph", () => {
     const readme = text(folder());

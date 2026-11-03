@@ -29,7 +29,9 @@ The README follows the environment's paths. When every path is in Azure, it
 leads with the Container Apps job, says `run.sql` has no Azure sign-in of its
 own, and omits the laptop `duckdb` command. When some paths are local and some
 in Azure, it says local paths cannot run in Azure, keeps the laptop command and
-omits the job paragraph. When every path is local, it has the laptop command
+omits the job paragraph; the laptop text says each table is published to its
+path when `published` is in Azure, and to the `published` folder, which must
+exist, when it is local. When every path is local, it has the laptop command
 only.
 
 ## Each table
@@ -83,10 +85,7 @@ the job with the public image `ghcr.io/ingestron/duckdb-runner:1` and
 `INGESTRON_SQL`, the storage roots (`abfss://<file system>@<account host>`) the
 job reads and writes, and something that starts it after each load.
 
-The generated README for an environment whose paths are all in Azure leads with
-this job, and omits the laptop command, since `run.sql` has no Azure sign-in of
-its own. A mixed environment's README says local paths cannot run in Azure and
-omits the job paragraph.
+The generated README follows the rule in "Files" above.
 
 The runner (`runner/`) runs `INGESTRON_SQL` in a fresh database at
 `/tmp/ingestron.duckdb`, signed in with the job's managed identity

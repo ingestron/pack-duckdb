@@ -45,6 +45,11 @@ function placeOf(tables: ResolvedTable[]): "azure" | "local" | "mixed" {
   return paths.every(remote) ? "azure" : "mixed";
 }
 
+/** Whether the tables are published to Azure storage, where there is no folder to create. */
+function publishesToAzure(tables: ResolvedTable[]): boolean {
+  return tables.some((table) => remote(table.store?.output?.location));
+}
+
 const job = `A Container Apps job runs \`run.sql\` with the public image
 \`ghcr.io/ingestron/duckdb-runner:1\`: copy this folder to storage and set the
 job's \`INGESTRON_SQL\` to the copied \`run.sql\`. \`ingestron request\` lists
@@ -62,9 +67,13 @@ stops without publishing if a table fails to build. Running it again is safe.
 
 const laptopRun = (
   tableCommand: string,
+  remotePublished: boolean,
 ) => `It builds every table in \`ingestron.duckdb\` in one transaction, then
-publishes each one to the \`published\` folder as \`<schema>.<table>.parquet\`;
-the folder must exist. With \`-bail\` (or the Azure job's runner), a run that
+${
+  remotePublished
+    ? "publishes each to its path."
+    : "publishes each one to the `published` folder as `<schema>.<table>.parquet`;\nthe folder must exist."
+} With \`-bail\`, a run that
 fails while building publishes nothing; without it, DuckDB carries on after an
 error and commits what it built. Running it again is safe. \`tables/\` holds
 each table's SQL alone, to run one table again:\n\n${tableCommand}`;
@@ -82,7 +91,9 @@ function readme(model: ResolvedModel, tables: ResolvedTable[]): string {
       ? ""
       : `Run \`run.sql\` from the project folder, where its paths start, with the DuckDB
 command line; \`-bail\` stops at the first error:\n\n${command("run.sql")}`,
-    place === "azure" ? azureRun : laptopRun(command("tables/<schema>.<table>.sql")),
+    place === "azure"
+      ? azureRun
+      : laptopRun(command("tables/<schema>.<table>.sql"), publishesToAzure(tables)),
   ];
   return `${sections.filter(Boolean).join("\n\n")}\n`;
 }
