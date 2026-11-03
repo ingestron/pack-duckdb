@@ -27,4 +27,10 @@ describe("the package README and settings say what users would trip on", () => {
     );
     expect(readme).toContain("a decimal rounds when the contract says `integer`");
   });
+
+  it("says append reads each file name once, so a re-exported file is skipped", () => {
+    expect(readme).toContain(
+      "`append` reads each file name once, so a file re-exported under the same name is skipped",
+    );
+  });
 });

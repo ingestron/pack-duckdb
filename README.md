@@ -20,6 +20,11 @@ with the same primary key; `sequence_by` picks the latest). Running again is
 safe in every mode. Each table is published to the `published` folder as
 `<schema>.<table>.parquet`; the folder must exist.
 
+`append` reads each file name once, so a file re-exported under the same name is
+skipped, and its new rows are not loaded. Give a re-export a new name, or delete
+`ingestron.duckdb` and run again to reload every file. In Azure each run starts
+with an empty database, so every file is read.
+
 A CSV without a header (`csv.header: false`) binds its columns in the contract's
 order, so the file's columns must be in that order. With a header, columns are
 matched by name.
