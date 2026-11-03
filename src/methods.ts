@@ -7,7 +7,11 @@ const csv = {
   additionalProperties: false,
   description: "How CSV files are read.",
   properties: {
-    header: { type: "boolean", description: "The first row names the columns." },
+    header: {
+      type: "boolean",
+      description:
+        "The first row names the columns. Without it, the columns bind in the contract's order.",
+    },
     delimiter: {
       type: "string",
       description: "The field separator.",

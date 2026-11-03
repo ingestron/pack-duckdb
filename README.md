@@ -20,6 +20,10 @@ with the same primary key; `sequence_by` picks the latest). Running again is
 safe in every mode. Each table is published to the `published` folder as
 `<schema>.<table>.parquet`; the folder must exist.
 
+A CSV without a header (`csv.header: false`) binds its columns in the contract's
+order, so the file's columns must be in that order. With a header, columns are
+matched by name.
+
 The pack writes `run.sql`, every table in order, and `tables/`, each table's
 SQL alone. `ingestron apply` puts them in `build/<environment>/`, or in
 `build/<environment>/duckdb/` when the standard lists other packs too. Run
