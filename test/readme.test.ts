@@ -2,6 +2,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { duckdb } from "../src/index.js";
+import { folder, generate, project } from "./project.js";
 
 const readme = readFileSync(new URL("../README.md", import.meta.url), "utf8").replace(/\s+/g, " ");
 
@@ -32,5 +33,62 @@ describe("the package README and settings say what users would trip on", () => {
     expect(readme).toContain(
       "`append` reads each file name once, so a file re-exported under the same name is skipped",
     );
+  });
+});
+
+const text = (where: { input: string; published: string }) =>
+  generate(project(where)).files["README.md"] ?? "";
+const azureInput = "abfss://landing@acct.dfs.core.windows.net/erp";
+const azurePublished = "abfss://published@acct.dfs.core.windows.net";
+
+describe("the generated README for an environment in Azure", () => {
+  const azure = () => text({ input: azureInput, published: azurePublished });
+
+  it("leads with how the job runs it, and gives no laptop command", () => {
+    const readme = azure();
+    expect(readme.split("\n\n")[1]).toContain("A Container Apps job runs `run.sql`");
+    expect(readme).not.toContain("duckdb -bail");
+  });
+
+  it("says run.sql has no Azure sign-in of its own", () => {
+    expect(azure().replace(/\s+/g, " ")).toContain(
+      "`run.sql` has no Azure sign-in of its own, so on a laptop it cannot read these paths",
+    );
+  });
+
+  it("describes the job's run without the laptop's -bail, database or folder", () => {
+    const readme = azure().replace(/\s+/g, " ");
+    expect(readme).toContain(
+      "The job builds every table in one transaction, publishes each to its path, and stops without publishing if a table fails to build.",
+    );
+    expect(readme).not.toContain("-bail");
+    expect(readme).not.toContain("ingestron.duckdb");
+    expect(readme).not.toContain("must exist");
+  });
+});
+
+describe("the generated README when only some paths are in Azure", () => {
+  const mixed = {
+    "input local": () => text({ input: folder().input, published: azurePublished }),
+    "published local": () => text({ input: azureInput, published: folder().published }),
+  };
+
+  it.each(Object.entries(mixed))(
+    "says local paths cannot run in Azure, keeps the laptop command and omits the job (%s)",
+    (_name, readme) => {
+      const result = readme();
+      expect(result).toContain("local paths cannot run in Azure");
+      expect(result).toContain('duckdb -bail ingestron.duckdb -c ".read build/dev/run.sql"');
+      expect(result).not.toContain("Container Apps job runs");
+    },
+  );
+});
+
+describe("the generated README when every path is local", () => {
+  it("has the laptop command and no job paragraph", () => {
+    const readme = text(folder());
+    expect(readme).toContain('duckdb -bail ingestron.duckdb -c ".read build/dev/run.sql"');
+    expect(readme).not.toContain("Container Apps");
+    expect(readme).not.toContain("sign-in");
   });
 });

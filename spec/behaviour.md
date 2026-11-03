@@ -25,6 +25,13 @@ table's SQL alone, build then publish; `README.md` says
 how to run it. A model with no `duckdb-table` table gets no files. The SQL
 differs between environments only in the paths their values give.
 
+The README follows the environment's paths. When every path is in Azure, it
+leads with the Container Apps job, says `run.sql` has no Azure sign-in of its
+own, and omits the laptop `duckdb` command. When some paths are local and some
+in Azure, it says local paths cannot run in Azure, keeps the laptop command and
+omits the job paragraph. When every path is local, it has the laptop command
+only.
+
 ## Each table
 
 `CREATE SCHEMA IF NOT EXISTS`, then by mode, then `COPY (SELECT <contract
@@ -75,6 +82,11 @@ paths, the section says a job in Azure cannot run it. It names
 the job with the public image `ghcr.io/ingestron/duckdb-runner:1` and
 `INGESTRON_SQL`, the storage roots (`abfss://<file system>@<account host>`) the
 job reads and writes, and something that starts it after each load.
+
+The generated README for an environment whose paths are all in Azure leads with
+this job, and omits the laptop command, since `run.sql` has no Azure sign-in of
+its own. A mixed environment's README says local paths cannot run in Azure and
+omits the job paragraph.
 
 The runner (`runner/`) runs `INGESTRON_SQL` in a fresh database at
 `/tmp/ingestron.duckdb`, signed in with the job's managed identity
