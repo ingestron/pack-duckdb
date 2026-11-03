@@ -17,4 +17,14 @@ describe("the package README and settings say what users would trip on", () => {
       "A CSV without a header (`csv.header: false`) binds its columns in the contract's order",
     );
   });
+
+  it("warns that a transform's casts to the contract's types can change values", () => {
+    expect(readme).toContain(
+      "A transform's columns are cast to the contract's types, and a cast can change a value",
+    );
+    expect(readme).toContain(
+      "a timestamp with a time zone loses its offset when the contract says `timestamp`, and a `timestamptz` shows the time in the session's time zone",
+    );
+    expect(readme).toContain("a decimal rounds when the contract says `integer`");
+  });
 });
