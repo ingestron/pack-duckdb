@@ -42,6 +42,12 @@ which reloads everything from the files. In `upsert`, a key's row is the last by
 `sequence_by`, then by file name; set `sequence_by` when one file can hold a key
 twice.
 
+A transform's columns are cast to the contract's types, and a cast can change a
+value: a timestamp with a time zone loses its offset when the contract says
+`timestamp`, and a `timestamptz` shows the time in the session's time zone; a
+decimal rounds when the contract says `integer`. Give the contract the type you
+want to keep.
+
 Expectations written in a flow are refused, since DuckDB tables check no rows
 yet; the contract's quality rules are reported as not checked.
 
