@@ -44,6 +44,20 @@ describe("runs-on", () => {
     expect(built["run.sql"]).toContain("FROM read_parquet('./samples/orders/*.parquet');");
   });
 
+  it("names build/duckdb/<environment>/ in the README, where ingestron 2.0 writes it beside other packs", () => {
+    const files = project(folder(), "{}", {
+      "project.yaml":
+        "id: shop\nenvironments: { dev: {}, local: { runs-on: duckdb } }\nimports: ['*.yaml']\n",
+      "standard.yaml":
+        "apiVersion: ingestron.io/v1\nkind: Standard\nid: acme\npacks: [duckdb@1, copier@1]\ningest: { settings: { duckdb-landed: { landing: ./samples } } }\n",
+      "flow.yaml":
+        "apiVersion: ingestron.io/v1\nkind: Flow\nid: shop\nsource: shop\ningest: { uses: copy }\ntables:\n  orders: { object: orders, contract: orders }\n",
+    });
+    const readme = generate(files, [duckdb, copier(true)], "local").files["README.md"];
+    expect(readme).toContain('duckdb -bail ingestron.duckdb -c ".read build/duckdb/local/run.sql"');
+    expect(readme).not.toContain("build/local");
+  });
+
   it("refuses files whose ingest does not say where they land", () => {
     const where = folder();
     const files = project(where, "{}", {

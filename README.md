@@ -30,12 +30,12 @@ order, so the file's columns must be in that order. With a header, columns are
 matched by name.
 
 The pack writes `run.sql`, every table in order, and `tables/`, each table's
-SQL alone. `ingestron apply` puts them in `build/<environment>/`, or in
-`build/<environment>/duckdb/` when the standard lists other packs too. Run
+SQL alone. `ingestron apply` (2.0 or later) puts them in
+`build/duckdb/<environment>/`, whatever other packs the standard lists. Run
 `run.sql` from the project folder with the DuckDB command line, for example:
 
 ```sh
-duckdb -bail ingestron.duckdb -c ".read build/dev/run.sql"
+duckdb -bail ingestron.duckdb -c ".read build/duckdb/dev/run.sql"
 ```
 
 Tables are built in one transaction and published after it commits; run with
@@ -99,8 +99,7 @@ In an environment whose files are in Azure storage, `run.sql` reads and writes
 Each run starts with an empty database, reads every landed file, rebuilds every
 table and publishes it, signed in as the job's managed identity; nothing is
 kept between runs, so running again is always safe. Your deploy step copies
-`build/<environment>/duckdb/` (or `build/<environment>/` when DuckDB is the
-only pack) to storage, and the job's `INGESTRON_SQL` names
+`build/duckdb/<environment>/` to storage, and the job's `INGESTRON_SQL` names
 the copied `run.sql`. ADF's `after_copy` can start the job after each load.
 `ingestron request` lists the job and its storage access. The image is
 described in [runner/README.md](runner/README.md).
