@@ -43,7 +43,7 @@ export function project(
 ): Record<string, string> {
   return {
     "project.yaml": "id: shop\nenvironments: { dev: {} }\nimports: ['*.yaml']\n",
-    "standard.yaml": `apiVersion: ingestron.io/v1\nkind: Standard\nid: acme\npacks: [duckdb@1]\nstore: { settings: { duckdb-table: ${store} } }\n`,
+    "standard.yaml": `apiVersion: ingestron.io/v1\nkind: Standard\nid: acme\npacks: [duckdb@2]\nstore: { settings: { duckdb-table: ${store} } }\n`,
     "platform.yaml": `apiVersion: ingestron.io/v1\nkind: Platform\nid: local\nsettings:\n  duckdb-table: { published: "${where.published}" }\n`,
     "shop.yaml": `apiVersion: ingestron.io/v1\nkind: Connection\nid: shop\nconnector: files\nconnectivity: public\nsettings: { path: "${where.input}" }\n`,
     "flow.yaml":

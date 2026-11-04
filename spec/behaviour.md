@@ -32,7 +32,11 @@ in Azure, it says local paths cannot run in Azure, keeps the laptop command and
 omits the job paragraph; the laptop text says each table is published to its
 path when `published` is in Azure, and to the `published` folder, which must
 exist, when it is local. When every path is local, it has the laptop command
-only.
+only. Its commands name `build/duckdb/<environment>/`, the folder ingestron 2.0
+writes the environment's files in, whatever other packs the standard lists.
+
+The pack is version 2 (`duckdb@2`) from 2.0.0: the README's folder is the only
+change from version 1, and the SQL is the same.
 
 ## Each table
 

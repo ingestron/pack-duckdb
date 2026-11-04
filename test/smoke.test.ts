@@ -12,7 +12,7 @@ const smoke = join(import.meta.dirname, "../runner/smoke/run.sql");
 const files = {
   "project.yaml": "id: smoke\nenvironments: { dev: {} }\nimports: ['*.yaml']\n",
   "standard.yaml":
-    "apiVersion: ingestron.io/v1\nkind: Standard\nid: s\npacks: [duckdb@1]\ningest: { settings: { duckdb-files: { format: csv } } }\n",
+    "apiVersion: ingestron.io/v1\nkind: Standard\nid: s\npacks: [duckdb@2]\ningest: { settings: { duckdb-files: { format: csv } } }\n",
   "platform.yaml":
     "apiVersion: ingestron.io/v1\nkind: Platform\nid: p\nsettings: { duckdb-table: { published: ./published } }\n",
   "shop.yaml":
