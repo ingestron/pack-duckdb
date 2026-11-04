@@ -179,7 +179,7 @@ describe("the generated README", () => {
   it("runs run.sql with .read, and stops at the first error", () => {
     const { files } = generate(project(folder()));
     expect(files["README.md"]).toContain(
-      'duckdb -bail ingestron.duckdb -c ".read build/dev/run.sql"',
+      'duckdb -bail ingestron.duckdb -c ".read build/duckdb/dev/run.sql"',
     );
   });
 

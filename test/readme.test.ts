@@ -78,7 +78,7 @@ describe("the generated README when only some paths are in Azure", () => {
     (_name, readme) => {
       const result = readme();
       expect(result).toContain("local paths cannot run in Azure");
-      expect(result).toContain('duckdb -bail ingestron.duckdb -c ".read build/dev/run.sql"');
+      expect(result).toContain('duckdb -bail ingestron.duckdb -c ".read build/duckdb/dev/run.sql"');
       expect(result).not.toContain("Container Apps job runs");
     },
   );
@@ -117,7 +117,7 @@ describe("the laptop run text in the generated README", () => {
 describe("the generated README when every path is local", () => {
   it("has the laptop command and no job paragraph", () => {
     const readme = text(folder());
-    expect(readme).toContain('duckdb -bail ingestron.duckdb -c ".read build/dev/run.sql"');
+    expect(readme).toContain('duckdb -bail ingestron.duckdb -c ".read build/duckdb/dev/run.sql"');
     expect(readme).not.toContain("Container Apps");
     expect(readme).not.toContain("sign-in");
   });
