@@ -80,7 +80,8 @@ each table's SQL alone, to run one table again:\n\n${tableCommand}`;
 
 function readme(model: ResolvedModel, tables: ResolvedTable[]): string {
   const { id, environment } = model.project;
-  const folder = `build/${environment}${model.standard.packs.length > 1 ? "/duckdb" : ""}`;
+  // Where ingestron 2.0 writes this environment's files: build/<pack>/<environment>/.
+  const folder = `build/duckdb/${environment}`;
   const place = placeOf(tables);
   const command = (file: string) =>
     `\`\`\`sh\nduckdb -bail ingestron.duckdb -c ".read ${folder}/${file}"\n\`\`\``;
