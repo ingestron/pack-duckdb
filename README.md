@@ -77,7 +77,7 @@ environments:
 
 ```yaml
 # standard.yaml
-packs: [duckdb@1, adf@1]
+packs: [duckdb@2, adf@2]
 ingest:
   settings:
     duckdb-landed: { landing: ./samples }
@@ -113,6 +113,11 @@ import { duckdb } from "@ingestron/pack-duckdb";
 const result = loadDefinitions("definitions", { packs: [duckdb], environment: "local" });
 if (result.model) console.log(duckdb.build(result.model)["run.sql"] ?? "");
 ```
+
+## What changed in 2.0
+
+- The pack is `duckdb@2`, like every pack ingestron 2.0 uses. There, a standard that names `duckdb@1` gets `PACK_VERSION`, with a fix that changes it to `duckdb@2`.
+- ingestron 2.0 writes each environment's files in `build/duckdb/<environment>/`, so the generated README's commands name that folder. The SQL is unchanged.
 
 ## Documentation
 

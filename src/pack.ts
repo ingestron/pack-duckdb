@@ -13,7 +13,7 @@ import { duckdbTypes } from "./types.js";
  */
 export const duckdb: Pack = {
   id: "duckdb",
-  version: 1,
+  version: 2,
   defaults: {
     naming: {
       catalog: "{{ project }}",

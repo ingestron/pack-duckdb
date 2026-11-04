@@ -53,7 +53,7 @@ const lander = (format: string, loads: "add" | "replace"): Pack => ({
 
 const landed = (store: string) =>
   project(folder(), store, {
-    "standard.yaml": `apiVersion: ingestron.io/v1\nkind: Standard\nid: acme\npacks: [duckdb@1, lander@1]\nstore: { settings: { duckdb-table: ${store} } }\n`,
+    "standard.yaml": `apiVersion: ingestron.io/v1\nkind: Standard\nid: acme\npacks: [duckdb@2, lander@2]\nstore: { settings: { duckdb-table: ${store} } }\n`,
     "flow.yaml":
       "apiVersion: ingestron.io/v1\nkind: Flow\nid: shop\nsource: shop\ningest: { uses: land }\ntables:\n  orders: { object: orders, contract: orders }\n",
   });
@@ -106,7 +106,7 @@ describe("types and names", () => {
     const where = folder();
     writeFileSync(join(where.input, "orders/a.csv"), "1,a,1\n2,b,1\n");
     const files = project(where, "{}", {
-      "standard.yaml": `apiVersion: ingestron.io/v1\nkind: Standard\nid: acme\npacks: [duckdb@1]\ningest: { settings: { duckdb-files: { format: csv, csv: { header: false, delimiter: "," } } } }\n`,
+      "standard.yaml": `apiVersion: ingestron.io/v1\nkind: Standard\nid: acme\npacks: [duckdb@2]\ningest: { settings: { duckdb-files: { format: csv, csv: { header: false, delimiter: "," } } } }\n`,
       "flow.yaml":
         "apiVersion: ingestron.io/v1\nkind: Flow\nid: shop\nsource: shop\ntables:\n  orders: { object: orders/*.csv, contract: orders }\n",
     });
