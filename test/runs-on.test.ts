@@ -35,7 +35,7 @@ describe("runs-on", () => {
       "project.yaml":
         "id: shop\nenvironments: { dev: {}, local: { runs-on: duckdb } }\nimports: ['*.yaml']\n",
       "standard.yaml":
-        "apiVersion: ingestron.io/v1\nkind: Standard\nid: acme\npacks: [duckdb@1, copier@1]\ningest: { settings: { duckdb-landed: { landing: ./samples } } }\n",
+        "apiVersion: ingestron.io/v1\nkind: Standard\nid: acme\npacks: [duckdb@2, copier@2]\ningest: { settings: { duckdb-landed: { landing: ./samples } } }\n",
       "flow.yaml":
         "apiVersion: ingestron.io/v1\nkind: Flow\nid: shop\nsource: shop\ningest: { uses: copy }\ntables:\n  orders: { object: orders, contract: orders }\n",
     });
@@ -49,7 +49,7 @@ describe("runs-on", () => {
       "project.yaml":
         "id: shop\nenvironments: { dev: {}, local: { runs-on: duckdb } }\nimports: ['*.yaml']\n",
       "standard.yaml":
-        "apiVersion: ingestron.io/v1\nkind: Standard\nid: acme\npacks: [duckdb@1, copier@1]\ningest: { settings: { duckdb-landed: { landing: ./samples } } }\n",
+        "apiVersion: ingestron.io/v1\nkind: Standard\nid: acme\npacks: [duckdb@2, copier@2]\ningest: { settings: { duckdb-landed: { landing: ./samples } } }\n",
       "flow.yaml":
         "apiVersion: ingestron.io/v1\nkind: Flow\nid: shop\nsource: shop\ningest: { uses: copy }\ntables:\n  orders: { object: orders, contract: orders }\n",
     });
@@ -62,7 +62,7 @@ describe("runs-on", () => {
     const where = folder();
     const files = project(where, "{}", {
       "standard.yaml":
-        "apiVersion: ingestron.io/v1\nkind: Standard\nid: acme\npacks: [duckdb@1, copier@1]\n",
+        "apiVersion: ingestron.io/v1\nkind: Standard\nid: acme\npacks: [duckdb@2, copier@2]\n",
       "flow.yaml":
         "apiVersion: ingestron.io/v1\nkind: Flow\nid: shop\nsource: shop\ningest: { uses: copy }\ntables:\n  orders: { object: orders, contract: orders }\n",
     });
@@ -83,7 +83,7 @@ describe("runs-on", () => {
       "project.yaml":
         "id: shop\nenvironments: { dev: {}, local: { runs-on: duckdb } }\nimports: ['*.yaml']\n",
       "standard.yaml":
-        "apiVersion: ingestron.io/v1\nkind: Standard\nid: acme\npacks: [duckdb@1, copier@1]\ningest: { settings: { duckdb-landed: { landing: ./samples } } }\n",
+        "apiVersion: ingestron.io/v1\nkind: Standard\nid: acme\npacks: [duckdb@2, copier@2]\ningest: { settings: { duckdb-landed: { landing: ./samples } } }\n",
       "flow.yaml":
         "apiVersion: ingestron.io/v1\nkind: Flow\nid: shop\nsource: shop\ningest: { uses: copy }\ntables:\n  orders: { object: orders, contract: orders }\n",
       "orders.yaml": contract().replace(

@@ -6,6 +6,13 @@ import { folder, generate, project } from "./project.js";
 
 const readme = readFileSync(new URL("../README.md", import.meta.url), "utf8").replace(/\s+/g, " ");
 
+describe("the pack's version", () => {
+  it("is 2, whose README names ingestron 2.0's folder, as the package README says", () => {
+    expect(duckdb.version).toBe(2);
+    expect(readme).toContain("The pack is `duckdb@2`, like every pack ingestron 2.0 uses.");
+  });
+});
+
 describe("the package README and settings say what users would trip on", () => {
   it("says a CSV without a header binds its columns in contract order", () => {
     const settings = duckdb.methods["duckdb-files"]?.settings as {

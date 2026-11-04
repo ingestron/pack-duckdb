@@ -36,7 +36,7 @@ const lander = (input: string, audit: boolean): Pack => ({
 
 const landed = (where: ReturnType<typeof folder>, audit: boolean, store = "{}") => {
   const files = project(where, store, {
-    "standard.yaml": `apiVersion: ingestron.io/v1\nkind: Standard\nid: acme\npacks: [duckdb@1, lander@1]\nstore: { settings: { duckdb-table: ${store} } }\n`,
+    "standard.yaml": `apiVersion: ingestron.io/v1\nkind: Standard\nid: acme\npacks: [duckdb@2, lander@2]\nstore: { settings: { duckdb-table: ${store} } }\n`,
     "flow.yaml":
       "apiVersion: ingestron.io/v1\nkind: Flow\nid: shop\nsource: shop\ningest: { uses: land }\ntables:\n  orders: { object: orders, contract: orders }\n",
   });
