@@ -34,7 +34,7 @@
     "lint": "eslint .",
     "test": "vitest run",
     "check:docs": "tsx scripts/check-docs.ts",
-    "validate": "pnpm format:check && pnpm secrets:check && pnpm licences:check && node --test scripts/*.test.mjs && pnpm lint && pnpm typecheck && pnpm test && pnpm check:docs && pnpm check:api",
+    "validate": "pnpm format:check && pnpm secrets:check && pnpm licences:check && node --test scripts/*.test.mjs && node scripts/check-modules.mjs && pnpm lint && pnpm typecheck && pnpm test && pnpm check:docs && pnpm check:api",
     "api": "api-extractor run --local",
     "check:api": "api-extractor run",
     "format": "prettier --write .",
