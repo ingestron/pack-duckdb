@@ -1,7 +1,7 @@
 // Checks the module rules in CONTRIBUTING.md: module folders are one level
 // deep under src, a module reaches another only through its index.ts, modules
 // do not import each other in a cycle, and no module is named utils, helpers,
-// common or misc.
+// common or misc, or build, dist or node_modules, which Git ignores.
 //
 //   node scripts/check-modules.mjs [<src folder>…]
 //
@@ -11,6 +11,7 @@ import { dirname, join, relative, resolve, sep } from "node:path";
 import { pathToFileURL } from "node:url";
 
 const vagueNames = ["utils", "helpers", "common", "misc"];
+const ignoredNames = ["build", "dist", "node_modules"];
 const specifier = /(?:\bfrom|\bimport)\s*\(?\s*["'](\.{1,2}\/[^"']+)["']/g;
 
 function sourceFiles(folder) {
@@ -60,6 +61,8 @@ export function moduleProblems(root) {
   const modules = readdirSync(root).filter((name) => statSync(join(root, name)).isDirectory());
   for (const name of modules.filter((name) => vagueNames.includes(name)))
     problems.push(`${name}: name the module for what it does, not "${name}"`);
+  for (const name of modules.filter((name) => ignoredNames.includes(name)))
+    problems.push(`${name}: Git ignores folders named "${name}"; name the module otherwise`);
   for (const file of sourceFiles(root)) {
     const shown = relative(root, file).split(sep).join("/");
     if (shown.split("/").length > 2) problems.push(`${shown}: more than one folder deep under src`);

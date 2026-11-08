@@ -62,3 +62,10 @@ test("reports a module named for nothing in particular", () => {
   const root = source({ "utils/index.ts": "export const x = 1;\n" });
   assert.deepEqual(moduleProblems(root), ['utils: name the module for what it does, not "utils"']);
 });
+
+test("reports a module named like a folder Git ignores", () => {
+  const root = source({ "build/index.ts": "export const x = 1;\n" });
+  assert.deepEqual(moduleProblems(root), [
+    'build: Git ignores folders named "build"; name the module otherwise',
+  ]);
+});
