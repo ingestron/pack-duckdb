@@ -140,5 +140,4 @@ Questions and feedback: hello@ingestron.io. Security reports: security@ingestron
 
 ## Licence
 
-Licensed under the [Apache License 2.0](LICENSE); see [NOTICE](NOTICE). Made by
-[IntentLabs](https://intentlabs.dev).
+Licensed under the [Apache License 2.0](LICENSE); see [NOTICE](NOTICE).

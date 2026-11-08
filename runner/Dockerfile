@@ -5,7 +5,7 @@ FROM python:3.12-slim@sha256:aa943ce411423c7582288f18707ff66eddcbaeb510502d747a7
 LABEL org.opencontainers.image.source="https://github.com/ingestron/pack-duckdb" \
       org.opencontainers.image.description="Runs an Ingestron project's generated DuckDB SQL in Azure, signed in as the job's managed identity." \
       org.opencontainers.image.licenses="Apache-2.0" \
-      org.opencontainers.image.vendor="IntentLabs"
+      org.opencontainers.image.vendor="Ingestron"
 
 ENV DUCKDB_EXTENSION_DIRECTORY=/opt/duckdb/extensions
 COPY requirements.txt /tmp/requirements.txt
