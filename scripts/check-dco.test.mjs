@@ -4,16 +4,16 @@ import test from "node:test";
 
 import { unsignedCommits } from "./check-dco.mjs";
 
-const author = { author: "The Architect", email: "contact@intentlabs.dev", parents: 1 };
+const author = { author: "The Architect", email: "hello@ingestron.io", parents: 1 };
 const commit = (sha, message, extra = {}) => ({ sha, message, ...author, ...extra });
 
 test("accepts a sign-off that matches the author", () => {
-  const message = "feat: x\n\nSigned-off-by: The Architect <contact@intentlabs.dev>\n";
+  const message = "feat: x\n\nSigned-off-by: The Architect <hello@ingestron.io>\n";
   assert.deepEqual(unsignedCommits([commit("a1", message)]), []);
 });
 
 test("ignores the case of the trailer and trailing spaces", () => {
-  const message = "feat: x\n\nsigned-off-by: The Architect <contact@intentlabs.dev>   \n";
+  const message = "feat: x\n\nsigned-off-by: The Architect <hello@ingestron.io>   \n";
   assert.deepEqual(unsignedCommits([commit("a2", message)]), []);
 });
 
@@ -23,7 +23,7 @@ test("rejects a sign-off by someone other than the author", () => {
 });
 
 test("does not count Co-authored-by as a sign-off", () => {
-  const message = "feat: x\n\nCo-authored-by: The Architect <contact@intentlabs.dev>\n";
+  const message = "feat: x\n\nCo-authored-by: The Architect <hello@ingestron.io>\n";
   assert.deepEqual(unsignedCommits([commit("a4", message)]), ["a4"]);
 });
 
