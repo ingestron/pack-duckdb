@@ -1,8 +1,8 @@
 // The pack's files: run.sql with every table in the model's order (inputs
 // first), each table's SQL alone in tables/, and a README saying how to run it.
 import type { ResolvedModel, ResolvedTable } from "@ingestron/definitions";
-import { remote } from "./request.js";
-import { buildSql, publishSql, tableSql } from "./table-sql.js";
+import { remote } from "../methods/request.js";
+import { buildSql, publishSql, tableSql } from "../sql/table-sql.js";
 
 /**
  * run.sql, tables/<schema>.<table>.sql and README.md, or nothing when no table is kept by duckdb-table.

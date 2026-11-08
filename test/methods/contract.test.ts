@@ -1,7 +1,7 @@
 // What the pack does with contracts.
 import { describe, expect, it } from "vitest";
-import { duckdb } from "../src/index.js";
-import { folder, generate, project } from "./project.js";
+import { duckdb } from "../../src/index.js";
+import { folder, generate, project } from "../project.js";
 
 describe("contract", () => {
   it("types the table's columns and keys from the contract, and checks no rows yet", () => {

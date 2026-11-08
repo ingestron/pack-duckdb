@@ -1,8 +1,8 @@
 // What the platform team provides when tables are read and published in Azure:
 // the job that runs run.sql, and its access to the storage.
 import { describe, expect, it } from "vitest";
-import { duckdb } from "../src/index.js";
-import { folder, generate, project } from "./project.js";
+import { duckdb } from "../../src/index.js";
+import { folder, generate, project } from "../project.js";
 
 const cloud = {
   input: "abfss://landing@acct.dfs.core.windows.net/erp",
