@@ -76,3 +76,11 @@ test("reports a module named like a sibling repository", () => {
     "docs: the layout check takes an import of this module for one of the docs repository; name the module otherwise",
   ]);
 });
+
+test("ignores imports that leave the source folder checked", () => {
+  const root = source({
+    "vscode/editor/index.ts": 'export { tree } from "../../features/tree.js";\n',
+    "features/tree.ts": "export const tree = 1;\n",
+  });
+  assert.deepEqual(moduleProblems(join(root, "vscode")), []);
+});

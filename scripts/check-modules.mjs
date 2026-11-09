@@ -33,10 +33,13 @@ function sourceFiles(folder) {
   });
 }
 
-/** The module a path under `root` belongs to: its first folder, or undefined at the top level. */
+/**
+ * The module a path under `root` belongs to: its first folder, or undefined at
+ * the top level or outside `root`.
+ */
 function moduleOf(root, path) {
   const parts = relative(root, path).split(sep);
-  return parts.length > 1 ? parts[0] : undefined;
+  return parts.length > 1 && parts[0] !== ".." ? parts[0] : undefined;
 }
 
 /** Each relative import of `file`, with the module it reaches and the file it names. */
