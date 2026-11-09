@@ -69,10 +69,88 @@ quotes with `"` doubled; text in single quotes with `'` doubled.
 ## Checks
 
 A method check problem when `upsert` has no primary key, `sequence_by` is not a
-contract column, a table's files have no recorded location or a format other
+contract column, an audit column has the name of a column of the table (or of
+`_ingestron_file` when the mode is not `replace`), a table's files have no recorded location or a format other
 than parquet, csv or json, `append` reads a file its ingest replaces each run, a flow writes expectations (DuckDB tables check no rows
 yet), a `files` connection has no `path`, or a transform's SQL names a table
 not in `inputs`.
+
+## Intent
+
+A standard can say what a table keeps and how its data is loaded as intent: a
+vocabulary the definitions specification (section 11) defines for every
+engine, such as `history: latest` or `load: files`. The pack declares what it
+does with each value. The sources are in [references.md](references.md).
+
+### Mapping
+
+| Intent                                  | DuckDB                                                          | Status    |
+| --------------------------------------- | --------------------------------------------------------------- | --------- |
+| `load.mode: full`                       | Every file is read each run; the table is replaced (`replace`)  | used      |
+| `load.mode: files`                      | Each file is read once and its rows added (`append`)            | used      |
+| `load.mode: incremental`, `changes`     | A cursor; a change feed                                         | not yet   |
+| `history: none`                         | The rows as they arrived (`replace` or `append`)                | used      |
+| `history: latest`                       | `INSERT OR REPLACE` of the last row per primary key (`upsert`)  | used      |
+| `history: full`, `bitemporal`           | Versioned rows                                                  | not yet   |
+| `sequence`                              | The column that orders a key's rows in `upsert` (`sequence_by`) | used      |
+| `audit: loaded_at`                      | `now() AS "<as>"`, in every table the pack keeps                | used      |
+| `audit: source_file`                    | The reader's `filename` column as `"<as>"`, in a flow's table   | used      |
+| `audit: source_modified_at`, `row_hash` | A file's modified time; a hash column                           | not yet   |
+| `audit: run_id`, `window_*`, `source_*` | Added by the step that lands the files                          | elsewhere |
+| `retention.landed_files`                | Kept by the landing pack                                        | elsewhere |
+| `load.cursor`, `load.deletes.*`         | A cursor column; deletions                                      | not yet   |
+| `rescued`, `storage.*`, `retention.*`   | A rescued column; clustering; time travel and log               | not yet   |
+| `quality.results`                       | A table of check results                                        | not yet   |
+| `operations.*`                          | DuckDB runs locally or as one job; it has no scheduler          | n/a       |
+
+Every `used` feature is generally available on the page the pack checked on
+2026-11-09 (references.md). Audit columns come after the contract's columns
+(and after any columns the landed files carry), are typed `TIMESTAMP WITH TIME
+ZONE` (`loaded_at`) and `VARCHAR` (`source_file`), and are kept in the table and
+in the published Parquet; they are not contract columns. `source_file` is
+generated only for a flow's table, since a transform's table reads no files.
+The `append` mode's `_ingestron_file` column is not an audit column: it stays
+in the table, is not published, and is how files already loaded are skipped.
+
+### Coverage
+
+The pack's `intent` covers every intent path and value, and a test fails when
+one is missing. An entry is one of:
+
+- `used`, with what it does and the feature's release status (level, the page
+  and the date checked), for every `used` row above;
+- `elsewhere`, for `retention.landed_files` and the audit values `run_id`,
+  `window_start`, `window_end`, `source_object` and `source_connection`: the
+  step that lands the files keeps or adds them. `duckdb-files` reads the files
+  where they are, so nothing lands them: they are `not-yet` for that method;
+- `not-applicable` ("DuckDB runs locally or as one job; it has no scheduler."),
+  for `operations`;
+- `not-yet` with the reason "Planned.", for every other path and value: the
+  table above is the target, not what the pack builds today.
+
+### Aliases and defaults
+
+The `mode` and `sequence_by` settings of `duckdb-table` are other names for
+intent:
+
+| Setting         | Intent                                 |
+| --------------- | -------------------------------------- |
+| `mode: replace` | `load.mode: full` and `history: none`  |
+| `mode: append`  | `load.mode: files` and `history: none` |
+| `mode: upsert`  | `history: latest`                      |
+| `sequence_by`   | `sequence`                             |
+
+A table built from the intent gives the SQL a table built from the setting
+gives. The methods fill in intent that nothing declares, which is what they did
+before intent existed: `duckdb-table` `history: none` and `duckdb-files`
+`load.mode: files`. A default is not declared, so it never changes `mode`: a
+table that declares only `history: none` or `load.mode: files` (with the
+other taken from the defaults) is built as `append`, and one that declares
+`load.mode: full` is built as `replace`.
+
+### The Platform's section
+
+DuckDB has no Platform fields of its own, so the pack's section allows none.
 
 ## Contracts
 

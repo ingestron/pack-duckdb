@@ -3,6 +3,7 @@
 // Tables already in the database gain new contract columns, and rows are
 // inserted by name, so a changed contract keeps loading.
 import type { Column, ResolvedModel, ResolvedTable } from "@ingestron/definitions";
+import { auditOf, auditSelect, readsFileName } from "./audit.js";
 import {
   fileColumn,
   literal,
@@ -53,8 +54,11 @@ export function columnsOf(table: ResolvedTable): Column[] {
 
 /** The COPY that publishes the table's columns as Parquet. */
 export function publishSql(table: ResolvedTable): string {
-  const columns = columnsOf(table)
-    .map((column) => quote(column.name))
+  const columns = [
+    ...columnsOf(table).map((column) => column.name),
+    ...auditOf(table).map((c) => c.name),
+  ]
+    .map(quote)
     .join(", ");
   return `COPY (SELECT ${columns} FROM ${nameOf(table)}) TO ${literal(table.store!.output!.location)} (FORMAT parquet);`;
 }
@@ -75,15 +79,19 @@ function filesSql(target: Target): string[] {
     // Files landed before the extra columns were added read them as NULL.
     unionByName: columnsOf(target.table).length > target.table.contract.columns.length,
   };
-  const select = selectColumns(columnsOf(target.table), {
-    renamed: ingest.renamed,
-    resolvedTypes: target.resolvedTypes,
-  });
+  const select = [
+    selectColumns(columnsOf(target.table), {
+      renamed: ingest.renamed,
+      resolvedTypes: target.resolvedTypes,
+    }),
+    ...auditSelect(target.table),
+  ].join(", ");
   const reader = readFiles({ ...files, withFile: true });
   const mode = target.table.store!.settings.mode;
   if (mode === "append") return appendSql(target, select, reader);
   if (mode === "upsert") return upsertSql(target, select, reader);
-  return [`CREATE OR REPLACE TABLE ${target.name} AS SELECT ${select} FROM ${readFiles(files)};`];
+  const replaced = readFiles({ ...files, withFile: readsFileName(target.table) });
+  return [`CREATE OR REPLACE TABLE ${target.name} AS SELECT ${select} FROM ${replaced};`];
 }
 
 /** Each file once: its name is kept with its rows, and files already loaded are skipped. */
@@ -123,9 +131,12 @@ function addColumns(target: Target): string[] {
 }
 
 function definitions({ table, resolvedTypes }: Target): string[] {
-  return columnsOf(table).map(
-    (column) => `${quote(column.name)} ${typeOf(column, { resolvedTypes })}`,
-  );
+  return [
+    ...columnsOf(table).map(
+      (column) => `${quote(column.name)} ${typeOf(column, { resolvedTypes })}`,
+    ),
+    ...auditOf(table).map((column) => `${quote(column.name)} ${column.type}`),
+  ];
 }
 
 /** The transform's query, its inputs named by their tables, selecting the contract's columns. */
@@ -137,10 +148,13 @@ function transformSql(model: ResolvedModel, target: Target): string[] {
       const found = model.tables.find((item) => item.name === input);
       return found ? `${quote(found.fullName.schema)}.${quote(found.fullName.table)}` : written;
     });
-  const columns = selectColumns(target.table.contract.columns, {
-    renamed: true,
-    resolvedTypes: target.resolvedTypes,
-  });
+  const columns = [
+    selectColumns(target.table.contract.columns, {
+      renamed: true,
+      resolvedTypes: target.resolvedTypes,
+    }),
+    ...auditSelect(target.table),
+  ].join(", ");
   // The code sits on its own lines, so a trailing comment cannot swallow the bracket.
   return [
     `CREATE OR REPLACE TABLE ${target.name} AS SELECT ${columns} FROM (\n${code}\n) AS "source";`,

@@ -70,6 +70,7 @@ describe("upsert", () => {
     expect(
       generate(files).result.diagnostics.map(({ code, message }) => ({ code, message })),
     ).toEqual([
+      { code: "SETTING_MOVED", message: '"mode" is now written as intent: history: latest.' },
       {
         code: "METHOD_CHECK",
         message: '"duckdb-table" for table "orders": upsert needs the contract\'s primaryKey.',

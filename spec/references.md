@@ -23,5 +23,20 @@ DuckDB syntax used by this pack, accessed 2026-11-01:
   prefixes, `COPY … TO` Azure storage, and secrets with `credential_chain` or
   `managed_identity`.
 
+Intent, accessed 2026-11-09:
+
+- [Timestamp with time zone functions](https://duckdb.org/docs/2.0/sql/functions/timestamptz):
+  `now()`, the current timestamp (`TIMESTAMP WITH TIME ZONE`) of the transaction,
+  which is the `loaded_at` audit column.
+- [Reading and writing Parquet files](https://duckdb.org/docs/2.0/data/parquet/overview)
+  and [Reading multiple files](https://duckdb.org/docs/2.0/data/multiple_files/overview):
+  the readers' `filename` option, a column naming each row's file, which is the
+  `source_file` audit column.
+- [INSERT](https://duckdb.org/docs/2.0/sql/statements/insert): `INSERT OR
+REPLACE`, for `history: latest`.
+- [Window functions](https://duckdb.org/docs/2.0/sql/functions/window_functions):
+  `row_number() OVER (PARTITION BY … ORDER BY …)` with `QUALIFY`, which keeps a
+  key's last row by `sequence`.
+
 The pack's tests run the SQL it writes with DuckDB (`@duckdb/node-api`), so the
 statements are checked against the engine as well as these pages.
