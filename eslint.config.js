@@ -51,7 +51,7 @@ export default tseslint.config(
         {
           patterns: [
             {
-              regex: "^@ingestron/[^/]+/(?!core$).+",
+              regex: "^@ingestron/[^/]+/(?!(?:core|internal)$).+",
               message: "Import another package by its entry point, not its files.",
             },
           ],
