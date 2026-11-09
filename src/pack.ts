@@ -10,6 +10,7 @@ import { duckdbTypes } from "./sql/index.js";
 /**
  * The DuckDB pack.
  * @example loadDefinitions("definitions", { packs: [duckdb], environment: "local" })
+ * @public
  */
 export const duckdb: Pack = {
   id: "duckdb",
