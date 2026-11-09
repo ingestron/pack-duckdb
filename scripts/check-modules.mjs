@@ -1,7 +1,8 @@
 // Checks the module rules in CONTRIBUTING.md: module folders are one level
 // deep under src, a module reaches another only through its index.ts, modules
 // do not import each other in a cycle, and no module is named utils, helpers,
-// common or misc, or build, dist or node_modules, which Git ignores.
+// common or misc, or build, dist or node_modules, which Git ignores, or after a
+// sibling repository, which the layout check would take an import for.
 //
 //   node scripts/check-modules.mjs [<src folder>…]
 //
@@ -12,6 +13,16 @@ import { pathToFileURL } from "node:url";
 
 const vagueNames = ["utils", "helpers", "common", "misc"];
 const ignoredNames = ["build", "dist", "node_modules"];
+// The layout check reads "../<name>/" as reaching into a sibling repository.
+const repositoryNames = [
+  "ingestron",
+  "docs",
+  "vscode",
+  "pack-databricks",
+  "pack-adf",
+  "pack-synapse",
+  "pack-duckdb",
+];
 const specifier = /(?:\bfrom|\bimport)\s*\(?\s*["'](\.{1,2}\/[^"']+)["']/g;
 
 function sourceFiles(folder) {
@@ -63,6 +74,10 @@ export function moduleProblems(root) {
     problems.push(`${name}: name the module for what it does, not "${name}"`);
   for (const name of modules.filter((name) => ignoredNames.includes(name)))
     problems.push(`${name}: Git ignores folders named "${name}"; name the module otherwise`);
+  for (const name of modules.filter((name) => repositoryNames.includes(name)))
+    problems.push(
+      `${name}: the layout check takes an import of this module for one of the ${name} repository; name the module otherwise`,
+    );
   for (const file of sourceFiles(root)) {
     const shown = relative(root, file).split(sep).join("/");
     if (shown.split("/").length > 2) problems.push(`${shown}: more than one folder deep under src`);

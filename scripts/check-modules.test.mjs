@@ -69,3 +69,10 @@ test("reports a module named like a folder Git ignores", () => {
     'build: Git ignores folders named "build"; name the module otherwise',
   ]);
 });
+
+test("reports a module named like a sibling repository", () => {
+  const root = source({ "docs/index.ts": "export const x = 1;\n" });
+  assert.deepEqual(moduleProblems(root), [
+    "docs: the layout check takes an import of this module for one of the docs repository; name the module otherwise",
+  ]);
+});
