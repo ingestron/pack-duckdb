@@ -159,6 +159,9 @@ describe("audit columns", () => {
     expect(
       result.diagnostics.filter((item) => item.severity === "error").map((item) => item.message),
     ).toEqual([
+      // The definitions check every audit name against the contract; the pack's check also
+      // covers the columns it adds itself.
+      'The audit column "name" has the name of a contract column.',
       '"duckdb-table" for table "orders": the audit column "name" is already a column of the table.',
     ]);
   });

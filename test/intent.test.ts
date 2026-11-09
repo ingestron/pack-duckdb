@@ -141,6 +141,25 @@ describe("the mode and sequence_by settings", () => {
     expect(intentUseOf(duckdb, "history", "none")?.use).toBe("used");
   });
 
+  it("keeps a written `mode: append` when a later layer says `history: none`, and says so", () => {
+    const where = folder();
+    const layers = standard(
+      ["layers: [{ name: bronze, history: none }, silver, gold]"],
+      "{ mode: append }",
+    );
+    const files = project(where, "{ mode: append }", { "standard.yaml": layers });
+    const { result } = generate(files);
+    expect(result.model!.tables[0]!.store!.settings.mode).toBe("append");
+    expect(result.diagnostics.filter((item) => item.code === "NOT_APPLIED")).toMatchObject([
+      {
+        message:
+          'history: none isn\'t applied on duckdb: the setting "mode: append" in standard.yaml decides it.',
+        location: { file: "standard.yaml", line: 6 },
+      },
+    ]);
+    expect(runSql(files)).toBe(runSql(project(where, "{ mode: append }")));
+  });
+
   it("builds the same run.sql from `sequence` as from `sequence_by`", () => {
     const where = folder();
     const fromSettings = runSql(project(where, "{ mode: upsert, sequence_by: seq }"));
