@@ -1,7 +1,7 @@
 // The DuckDB SQL a table is written in: quoted names and text, file readers, typed columns.
 import type { Column } from "@ingestron/definitions";
 import { describe, expect, it } from "vitest";
-import { literal, quote, readFiles, selectColumns } from "../src/sql.js";
+import { literal, quote, readFiles, selectColumns } from "../../src/sql/sql.js";
 
 const columns: Column[] = [
   { name: "id", logicalType: "integer", nullable: false },
