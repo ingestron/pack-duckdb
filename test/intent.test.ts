@@ -33,7 +33,6 @@ describe("the pack's intent coverage", () => {
 
   it("declares what it builds as used, with the date its status was checked", () => {
     for (const key of [
-      "load.mode=files",
       "load.mode=full",
       "history=none",
       "history=latest",
@@ -65,6 +64,13 @@ describe("the pack's intent coverage", () => {
         use: "not-applicable",
         reason: "DuckDB runs locally or as one job; it has no scheduler.",
       });
+  });
+
+  it("plans reading each file once, which the mode setting does", () => {
+    expect(intentUseOf(duckdb, "load.mode", "files")).toEqual({
+      use: "not-yet",
+      reason: "Planned: each run reads every file; write mode: append to read each file once.",
+    });
   });
 
   it("plans the rest", () => {
@@ -150,7 +156,7 @@ describe("the mode and sequence_by settings", () => {
     const files = project(where);
     expect(runSql(files)).toContain('CREATE OR REPLACE TABLE "bronze"."orders" AS SELECT');
     const model = generate(files).result.model!;
-    expect(model.tables[0]!.intent).toEqual({ load: { mode: "files" }, history: "none" });
+    expect(model.tables[0]!.intent).toEqual({ load: { mode: "full" }, history: "none" });
     expect(model.tables[0]!.store!.settings.mode).toBe("replace");
   });
 });

@@ -63,7 +63,7 @@ export const duckdbFiles: Method = {
   connectors: ["files"],
   produces: "files",
   defaults: { format: "parquet", csv: { header: true, delimiter: "," } },
-  intentDefaults: { load: { mode: "files" } },
+  intentDefaults: { load: { mode: "full" } },
   intent: filesIntent,
   placement: { standard: ["csv"] },
   settings: {

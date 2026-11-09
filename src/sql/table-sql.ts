@@ -162,7 +162,22 @@ function transformSql(model: ResolvedModel, target: Target): string[] {
   // The code sits on its own lines, so a trailing comment cannot swallow the bracket.
   const query = `(\n${code}\n) AS "source"`;
   // With a key, `history: latest` keeps the rows the query no longer gives (by key).
-  if (target.table.store!.settings.mode === "upsert" && target.table.contract.primaryKey.length > 0)
-    return upsertSql(target, columns, query, false);
+  if (keepsLatest(target.table)) return upsertSql(target, columns, query, false);
   return [`CREATE OR REPLACE TABLE ${target.name} AS SELECT ${columns} FROM ${query};`];
+}
+
+/**
+ * True for a transform's table with a primary key whose intent says `history: latest`, written
+ * as intent. A `mode: upsert` setting alone never made a transform's table an upsert, so
+ * it still does not: tables already built that way have no key to replace by.
+ */
+function keepsLatest(table: ResolvedTable): boolean {
+  const origin = table.intentOrigins.history;
+  return (
+    table.intent.history === "latest" &&
+    table.contract.primaryKey.length > 0 &&
+    origin !== undefined &&
+    origin.layer !== "pack" &&
+    origin.alias === undefined
+  );
 }

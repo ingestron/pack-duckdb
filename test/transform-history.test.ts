@@ -33,8 +33,13 @@ const contractOf = (key: string) =>
     "",
   ].join("\n");
 
-const files = (where: ReturnType<typeof folder>, extra: string, key = "primaryKey: true") =>
-  project(where, "{}", {
+const files = (
+  where: ReturnType<typeof folder>,
+  extra: string,
+  key = "primaryKey: true",
+  store = "{}",
+) =>
+  project(where, store, {
     "latest.yaml": transform(extra),
     "latest-contract.yaml": contractOf(key),
   });
@@ -86,6 +91,12 @@ describe("history: latest on a transform", () => {
     expect(
       result.diagnostics.filter((item) => item.severity === "error").map((item) => item.message),
     ).toEqual(['"duckdb-table" for table "latest": upsert needs the contract\'s primaryKey.']);
+  });
+
+  it("leaves a keyed transform with `mode: upsert` as a setting alone as it was", () => {
+    const sql = runSql(files(folder(), "", "primaryKey: true", "{ mode: upsert }"));
+    expect(sql).toContain('CREATE OR REPLACE TABLE "silver"."latest" AS SELECT');
+    expect(sql).not.toContain('INSERT OR REPLACE INTO "silver"."latest"');
   });
 
   it("leaves a transform without history as it was", () => {

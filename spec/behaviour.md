@@ -85,23 +85,24 @@ does with each value. The sources are in [references.md](references.md).
 
 ### Mapping
 
-| Intent                                  | DuckDB                                                                                             | Status    |
-| --------------------------------------- | -------------------------------------------------------------------------------------------------- | --------- |
-| `load.mode: full`, `files`              | Chosen by the ingest method; every file in the object is read each run                             | used      |
-| `load.mode: incremental`, `changes`     | A cursor; a change feed                                                                            | not yet   |
-| `history: none`                         | The rows as they arrived (`replace` or `append`)                                                   | used      |
-| `history: latest`                       | `INSERT OR REPLACE` of the last row per primary key (`upsert`), in a flow's or a transform's table | used      |
-| `history: full`, `bitemporal`           | Versioned rows                                                                                     | not yet   |
-| `sequence`                              | The column that orders a key's rows in `upsert` (`sequence_by`)                                    | used      |
-| `audit: loaded_at`                      | `now() AS "<as>"`, in every table the pack keeps                                                   | used      |
-| `audit: source_file`                    | The reader's `filename` column as `"<as>"`, in a flow's table                                      | used      |
-| `audit: source_modified_at`, `row_hash` | A file's modified time; a hash column                                                              | not yet   |
-| `audit: run_id`, `window_*`, `source_*` | Added by the step that lands the files                                                             | elsewhere |
-| `retention.landed_files`                | Kept by the landing pack                                                                           | elsewhere |
-| `load.cursor`, `load.deletes.*`         | A cursor column; deletions                                                                         | not yet   |
-| `rescued`, `storage.*`, `retention.*`   | A rescued column; clustering; time travel and log                                                  | not yet   |
-| `quality.results`                       | A table of check results                                                                           | not yet   |
-| `operations.*`                          | DuckDB runs locally or as one job; it has no scheduler                                             | n/a       |
+| Intent                                                            | DuckDB                                                                                             | Status    |
+| ----------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- | --------- |
+| `load.mode: full`                                                 | Every file the object names is read each run                                                       | used      |
+| `load.mode: files`                                                | Each file read once: write `mode: append`                                                          | not yet   |
+| `load.mode: incremental`, `changes`                               | A cursor; a change feed                                                                            | not yet   |
+| `history: none`                                                   | The rows as they arrived (`replace` or `append`)                                                   | used      |
+| `history: latest`                                                 | `INSERT OR REPLACE` of the last row per primary key (`upsert`), in a flow's or a transform's table | used      |
+| `history: full`, `bitemporal`                                     | Versioned rows                                                                                     | not yet   |
+| `sequence`                                                        | The column that orders a key's rows in `upsert` (`sequence_by`)                                    | used      |
+| `audit: loaded_at`                                                | `now() AS "<as>"`, in every table the pack keeps                                                   | used      |
+| `audit: source_file`                                              | The reader's `filename` column as `"<as>"`, in a flow's table                                      | used      |
+| `audit: source_modified_at`, `row_hash`                           | A file's modified time; a hash column                                                              | not yet   |
+| `audit: run_id`, `window_*`, `source_object`, `source_connection` | Added by the step that lands the files                                                             | elsewhere |
+| `retention.landed_files`                                          | Kept by the landing pack                                                                           | elsewhere |
+| `load.cursor`, `load.deletes.*`                                   | A cursor column; deletions                                                                         | not yet   |
+| `rescued`, `storage.*`, `retention.*`                             | A rescued column; clustering; time travel and log                                                  | not yet   |
+| `quality.results`                                                 | A table of check results                                                                           | not yet   |
+| `operations.*`                                                    | DuckDB runs locally or as one job; it has no scheduler                                             | n/a       |
 
 Every `used` feature is generally available on the page the pack checked on
 2026-11-09 (references.md). Audit columns come after the contract's columns
@@ -144,7 +145,7 @@ intent:
 is not an alias: the ingest method decides it. A table built from the intent gives
 the SQL a table built from the setting gives. The methods fill in intent that
 nothing declares, which is what they did before intent existed: `duckdb-table`
-`history: none` and `duckdb-files` `load.mode: files`. A default is not declared,
+`history: none` and `duckdb-files` `load.mode: full`. A default is not declared,
 so it never changes `mode`; a table that declares `history: none` is built as
 `replace`, as it was.
 

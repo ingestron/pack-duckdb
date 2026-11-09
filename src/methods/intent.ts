@@ -49,8 +49,11 @@ function planned(): Record<string, IntentUse> {
 /** The pack's coverage: what it builds, `elsewhere` for the landing pack's work, the rest planned. */
 export const intent: Record<string, IntentUse> = {
   ...planned(),
-  "load.mode=files": used("The ingest method reads the files its object names.", pages.readers),
-  "load.mode=full": used("The ingest method reads the files its object names.", pages.readers),
+  "load.mode=full": used("Every file the object names is read each run.", pages.readers),
+  "load.mode=files": {
+    use: "not-yet",
+    reason: "Planned: each run reads every file; write mode: append to read each file once.",
+  },
   "history=none": used("Replace or append: the rows as they arrived.", pages.insert),
   "history=latest": used(
     "INSERT OR REPLACE of the last row per primary key, in a flow's or a transform's table.",
