@@ -54,7 +54,8 @@ columns> FROM …) TO '<published>/<schema>.<table>.parquet' (FORMAT parquet)`:
 - In both, each contract column is added when missing (`ALTER TABLE … ADD
 COLUMN IF NOT EXISTS`), so a contract that gains columns keeps loading.
 - A transform's table: `CREATE OR REPLACE TABLE … AS SELECT <contract columns,
-each cast to its type> FROM (<code>) AS "source"`, the code on its own lines.
+each cast to its type> FROM (<code>) AS "source"`, the code on its own lines;
+  with `history: latest` and a primary key, an upsert instead (see "Intent").
 
 Each column is `CAST(<file column> AS <type>) AS <name>`. The file column is the
 `physicalName` when the ingest did not rename; the type is the resolved one when
@@ -84,24 +85,23 @@ does with each value. The sources are in [references.md](references.md).
 
 ### Mapping
 
-| Intent                                  | DuckDB                                                          | Status    |
-| --------------------------------------- | --------------------------------------------------------------- | --------- |
-| `load.mode: full`                       | Every file is read each run; the table is replaced (`replace`)  | used      |
-| `load.mode: files`                      | Each file is read once and its rows added (`append`)            | used      |
-| `load.mode: incremental`, `changes`     | A cursor; a change feed                                         | not yet   |
-| `history: none`                         | The rows as they arrived (`replace` or `append`)                | used      |
-| `history: latest`                       | `INSERT OR REPLACE` of the last row per primary key (`upsert`)  | used      |
-| `history: full`, `bitemporal`           | Versioned rows                                                  | not yet   |
-| `sequence`                              | The column that orders a key's rows in `upsert` (`sequence_by`) | used      |
-| `audit: loaded_at`                      | `now() AS "<as>"`, in every table the pack keeps                | used      |
-| `audit: source_file`                    | The reader's `filename` column as `"<as>"`, in a flow's table   | used      |
-| `audit: source_modified_at`, `row_hash` | A file's modified time; a hash column                           | not yet   |
-| `audit: run_id`, `window_*`, `source_*` | Added by the step that lands the files                          | elsewhere |
-| `retention.landed_files`                | Kept by the landing pack                                        | elsewhere |
-| `load.cursor`, `load.deletes.*`         | A cursor column; deletions                                      | not yet   |
-| `rescued`, `storage.*`, `retention.*`   | A rescued column; clustering; time travel and log               | not yet   |
-| `quality.results`                       | A table of check results                                        | not yet   |
-| `operations.*`                          | DuckDB runs locally or as one job; it has no scheduler          | n/a       |
+| Intent                                  | DuckDB                                                                                             | Status    |
+| --------------------------------------- | -------------------------------------------------------------------------------------------------- | --------- |
+| `load.mode: full`, `files`              | Chosen by the ingest method; every file in the object is read each run                             | used      |
+| `load.mode: incremental`, `changes`     | A cursor; a change feed                                                                            | not yet   |
+| `history: none`                         | The rows as they arrived (`replace` or `append`)                                                   | used      |
+| `history: latest`                       | `INSERT OR REPLACE` of the last row per primary key (`upsert`), in a flow's or a transform's table | used      |
+| `history: full`, `bitemporal`           | Versioned rows                                                                                     | not yet   |
+| `sequence`                              | The column that orders a key's rows in `upsert` (`sequence_by`)                                    | used      |
+| `audit: loaded_at`                      | `now() AS "<as>"`, in every table the pack keeps                                                   | used      |
+| `audit: source_file`                    | The reader's `filename` column as `"<as>"`, in a flow's table                                      | used      |
+| `audit: source_modified_at`, `row_hash` | A file's modified time; a hash column                                                              | not yet   |
+| `audit: run_id`, `window_*`, `source_*` | Added by the step that lands the files                                                             | elsewhere |
+| `retention.landed_files`                | Kept by the landing pack                                                                           | elsewhere |
+| `load.cursor`, `load.deletes.*`         | A cursor column; deletions                                                                         | not yet   |
+| `rescued`, `storage.*`, `retention.*`   | A rescued column; clustering; time travel and log                                                  | not yet   |
+| `quality.results`                       | A table of check results                                                                           | not yet   |
+| `operations.*`                          | DuckDB runs locally or as one job; it has no scheduler                                             | n/a       |
 
 Every `used` feature is generally available on the page the pack checked on
 2026-11-09 (references.md). Audit columns come after the contract's columns
@@ -133,20 +133,27 @@ one is missing. An entry is one of:
 The `mode` and `sequence_by` settings of `duckdb-table` are other names for
 intent:
 
-| Setting         | Intent                                 |
-| --------------- | -------------------------------------- |
-| `mode: replace` | `load.mode: full` and `history: none`  |
-| `mode: append`  | `load.mode: files` and `history: none` |
-| `mode: upsert`  | `history: latest`                      |
-| `sequence_by`   | `sequence`                             |
+| Setting         | Intent            |
+| --------------- | ----------------- |
+| `mode: replace` | `history: none`   |
+| `mode: upsert`  | `history: latest` |
+| `sequence_by`   | `sequence`        |
 
-A table built from the intent gives the SQL a table built from the setting
-gives. The methods fill in intent that nothing declares, which is what they did
-before intent existed: `duckdb-table` `history: none` and `duckdb-files`
-`load.mode: files`. A default is not declared, so it never changes `mode`: a
-table that declares only `history: none` or `load.mode: files` (with the
-other taken from the defaults) is built as `append`, and one that declares
-`load.mode: full` is built as `replace`.
+`mode: append` is a setting only: appending needs files that are added to, which
+`history: none` does not say, so writing it is not reported as moved. `load.mode`
+is not an alias: the ingest method decides it. A table built from the intent gives
+the SQL a table built from the setting gives. The methods fill in intent that
+nothing declares, which is what they did before intent existed: `duckdb-table`
+`history: none` and `duckdb-files` `load.mode: files`. A default is not declared,
+so it never changes `mode`; a table that declares `history: none` is built as
+`replace`, as it was.
+
+`history: latest` on a transform's table (with the contract's primary key)
+creates the table with the contract's columns and key, as an `upsert` flow
+table, then runs `INSERT OR REPLACE INTO … BY NAME SELECT <contract columns,
+cast> FROM (<code>) AS "source"`, keeping a key's last row by `sequence` when it
+is set. Rows the query no longer returns stay. Without a primary key it is the
+method check problem for `upsert`.
 
 ### The Platform's section
 

@@ -49,11 +49,11 @@ function planned(): Record<string, IntentUse> {
 /** The pack's coverage: what it builds, `elsewhere` for the landing pack's work, the rest planned. */
 export const intent: Record<string, IntentUse> = {
   ...planned(),
-  "load.mode=files": used("Each file is read once, into an appended table.", pages.readers),
-  "load.mode=full": used("Every file is read each run, into a replaced table.", pages.readers),
+  "load.mode=files": used("The ingest method reads the files its object names.", pages.readers),
+  "load.mode=full": used("The ingest method reads the files its object names.", pages.readers),
   "history=none": used("Replace or append: the rows as they arrived.", pages.insert),
   "history=latest": used(
-    "INSERT OR REPLACE of the last row per primary key (row_number() … QUALIFY).",
+    "INSERT OR REPLACE of the last row per primary key, in a flow's or a transform's table.",
     pages.insert,
   ),
   sequence: used("The column that orders a key's rows in the window function.", pages.window),
@@ -72,15 +72,15 @@ export const filesIntent: Record<string, IntentUse> = Object.fromEntries(
 );
 
 /**
- * `duckdb-table`'s `mode` and `sequence_by` are other names for intent: a replaced table is
- * the whole selection with no history, an appended one the new files with no history, and
- * an upserted one the latest row per key.
+ * `duckdb-table`'s `mode` and `sequence_by` are other names for intent: a replaced table
+ * keeps the rows as they arrived (so does an appended one), and an upserted table keeps the
+ * latest row per key. `append` stays a setting only: it needs files that are added to, which
+ * `history: none` does not say, so it has no value here.
  */
 export const tableAliases: Record<string, SettingAlias> = {
   mode: {
     values: {
-      replace: { load: { mode: "full" }, history: "none" },
-      append: { load: { mode: "files" }, history: "none" },
+      replace: { history: "none" },
       upsert: { history: "latest" },
     },
   },

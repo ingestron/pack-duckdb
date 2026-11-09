@@ -89,7 +89,7 @@ function filesSql(target: Target): string[] {
   const reader = readFiles({ ...files, withFile: true });
   const mode = target.table.store!.settings.mode;
   if (mode === "append") return appendSql(target, select, reader);
-  if (mode === "upsert") return upsertSql(target, select, reader);
+  if (mode === "upsert") return upsertSql(target, select, reader, true);
   const replaced = readFiles({ ...files, withFile: readsFileName(target.table) });
   return [`CREATE OR REPLACE TABLE ${target.name} AS SELECT ${select} FROM ${replaced};`];
 }
@@ -106,20 +106,24 @@ function appendSql(target: Target, select: string, reader: string): string[] {
 
 /**
  * Rows replace those with the same primary key. A key's row is the last by
- * sequence_by, then by file name, so every run keeps the same one.
+ * sequence_by, then (for files) by file name, so every run keeps the same one. Rows the
+ * source no longer gives stay. A source that gives no order is not made unique.
  */
-function upsertSql(target: Target, select: string, reader: string): string[] {
+function upsertSql(target: Target, select: string, source: string, files: boolean): string[] {
   const { table } = target;
   const keys = table.contract.primaryKey.map(quote).join(", ");
   const sequence = table.store!.settings.sequence_by;
   const order = [
     ...(typeof sequence === "string" ? [`${quote(sequence)} DESC`] : []),
-    `${quote(fileColumn)} DESC`,
+    ...(files ? [`${quote(fileColumn)} DESC`] : []),
   ].join(", ");
+  const last = order
+    ? ` QUALIFY row_number() OVER (PARTITION BY ${keys} ORDER BY ${order}) = 1`
+    : "";
   return [
     `CREATE TABLE IF NOT EXISTS ${target.name} (${definitions(target).join(", ")}, PRIMARY KEY (${keys}));`,
     ...addColumns(target),
-    `INSERT OR REPLACE INTO ${target.name} BY NAME SELECT ${select} FROM ${reader} QUALIFY row_number() OVER (PARTITION BY ${keys} ORDER BY ${order}) = 1;`,
+    `INSERT OR REPLACE INTO ${target.name} BY NAME SELECT ${select} FROM ${source}${last};`,
   ];
 }
 
@@ -156,7 +160,9 @@ function transformSql(model: ResolvedModel, target: Target): string[] {
     ...auditSelect(target.table),
   ].join(", ");
   // The code sits on its own lines, so a trailing comment cannot swallow the bracket.
-  return [
-    `CREATE OR REPLACE TABLE ${target.name} AS SELECT ${columns} FROM (\n${code}\n) AS "source";`,
-  ];
+  const query = `(\n${code}\n) AS "source"`;
+  // With a key, `history: latest` keeps the rows the query no longer gives (by key).
+  if (target.table.store!.settings.mode === "upsert" && target.table.contract.primaryKey.length > 0)
+    return upsertSql(target, columns, query, false);
+  return [`CREATE OR REPLACE TABLE ${target.name} AS SELECT ${columns} FROM ${query};`];
 }

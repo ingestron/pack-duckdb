@@ -111,21 +111,28 @@ describe("the mode and sequence_by settings", () => {
     expect(fromIntent).toContain("INSERT OR REPLACE");
   });
 
-  it("builds the same run.sql from `history: none` with `load: files` as from `mode: append`", () => {
+  it("builds the same run.sql from `history: none` as from no intent (replace)", () => {
     const where = folder();
-    const fromSettings = runSql(project(where, "{ mode: append }"));
-    const fromIntent = runSql(
-      project(where, "{}", { "flow.yaml": flow(", history: none, load: { mode: files }") }),
-    );
-    expect(fromIntent).toBe(fromSettings);
+    const today = runSql(project(where));
+    expect(today).toContain("CREATE OR REPLACE TABLE");
+    const layers = standard(["layers: [{ name: bronze, history: none }, silver, gold]"]);
+    expect(runSql(project(where, "{}", { "standard.yaml": layers }))).toBe(today);
+    expect(runSql(project(where, "{}", { "flow.yaml": flow(", history: none") }))).toBe(today);
   });
 
-  it("builds the same run.sql from `history: none` with `load: full` as from `mode: replace`", () => {
+  it("leaves `load.mode` to the ingest method: it does not change the mode", () => {
     const where = folder();
-    const fromIntent = runSql(
-      project(where, "{}", { "flow.yaml": flow(", history: none, load: { mode: full }") }),
-    );
-    expect(fromIntent).toBe(runSql(project(where)));
+    const today = runSql(project(where));
+    for (const load of ["files", "full"])
+      expect(runSql(project(where, "{}", { "flow.yaml": flow(`, load: { mode: ${load} }`) }))).toBe(
+        today,
+      );
+  });
+
+  it("keeps `mode: append` a setting only, so it is not reported as moved", () => {
+    const { result } = generate(project(folder(), "{ mode: append }"));
+    expect(result.diagnostics.map((item) => item.code)).not.toContain("SETTING_MOVED");
+    expect(intentUseOf(duckdb, "history", "none")?.use).toBe("used");
   });
 
   it("builds the same run.sql from `sequence` as from `sequence_by`", () => {
