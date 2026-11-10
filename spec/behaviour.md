@@ -58,6 +58,17 @@ columns> FROM …) TO '<published>/<schema>.<table>.parquet' (FORMAT parquet)`:
   when set, then by file name.
 - In both, each contract column is added when missing (`ALTER TABLE … ADD
 COLUMN IF NOT EXISTS`), so a contract that gains columns keeps loading.
+- When the table cleanses a column of its primary key with an operation that
+  can change its value (`trim`, `empty`, `map`, `case` or `default`; not
+  `timezone`), two rows can reach the insert with one key: `" a"` and `"a"`
+  trimmed. DuckDB's `INSERT OR REPLACE` would then keep either. So, for a
+  flow's `upsert` and a transform's `history: latest` alike, the rows are first
+  made unique on the cleansed key: a `SELECT` of their own, so the window reads
+  the key as cleansed, then
+  `QUALIFY row_number() OVER (PARTITION BY <key> ORDER BY <sequence> DESC, <file> DESC, <every contract column> DESC) = 1`,
+  the sequence only when set and the file only for a flow (its
+  `_ingestron_file` is left out of the result). Every run keeps the same row.
+  Any other `upsert` is written as above, unchanged.
 - A transform's table: `CREATE OR REPLACE TABLE … AS SELECT <contract columns,
 each cast to its type> FROM (<code>) AS "source"`, the code on its own lines;
   with `history: latest` and a primary key, an upsert instead (see "Intent").

@@ -89,10 +89,25 @@ export function appendSql(target: Target, select: string, reader: string): strin
   ];
 }
 
+/** The cleansing operations that can change a value, so two keys can become one. */
+const changing = ["trim", "empty", "map", "case", "default"] as const;
+
+/** True when the table cleanses a column of its primary key in a way that can change its value. */
+function cleansesKey(table: ResolvedTable): boolean {
+  const columns = table.cleanse?.columns ?? {};
+  return table.contract.primaryKey.some((key) => {
+    const operations = columns[key];
+    return operations !== undefined && changing.some((name) => operations[name] !== undefined);
+  });
+}
+
 /**
  * Rows replace those with the same primary key. A key's row is the last by
  * sequence_by, then (for files) by file name, so every run keeps the same one. Rows the
- * source no longer gives stay. A source that gives no order is not made unique.
+ * source no longer gives stay. A source that gives no order is not made unique, unless
+ * cleansing can change a key: then rows that cleansing gives one key are made unique on the
+ * cleansed key, the last by sequence_by, file name and every column, so the insert never
+ * holds a key twice.
  */
 export function upsertSql(
   target: Target,
@@ -114,7 +129,9 @@ export function upsertSql(
     `CREATE TABLE IF NOT EXISTS ${target.name} (${definitions(target).join(", ")}, PRIMARY KEY (${keys}));`,
     ...addColumns(target, target.name),
   ];
-  const rows = `SELECT ${select} FROM ${source}${last}`;
+  const rows = cleansesKey(table)
+    ? uniqueByKey(target, select, source, files)
+    : `SELECT ${select} FROM ${source}${last}`;
   if (!checked(target))
     return [...created, `INSERT OR REPLACE INTO ${target.name} BY NAME ${rows};`];
   const quarantine = quarantineOf(table);
@@ -143,4 +160,25 @@ function definitions({ table, resolvedTypes }: Target): string[] {
     ),
     ...auditOf(table).map((column) => `${quote(column.name)} ${column.type}`),
   ];
+}
+
+/**
+ * The rows, one per cleansed key: a `SELECT` of their own, so the window reads the key as
+ * cleansed, then `QUALIFY`, the last by sequence_by, file name (for files) and every column.
+ */
+function uniqueByKey(target: Target, select: string, source: string, files: boolean): string {
+  const { table } = target;
+  const keys = table.contract.primaryKey.map(quote).join(", ");
+  const sequence = table.store!.settings.sequence_by;
+  const file = quote(fileColumn);
+  const order = [
+    ...(typeof sequence === "string" ? [quote(sequence)] : []),
+    ...(files ? [file] : []),
+    ...columnsOf(table).map((column) => quote(column.name)),
+  ]
+    .map((column) => `${column} DESC`)
+    .join(", ");
+  const rows = `SELECT ${select}${files ? `, ${file}` : ""} FROM ${source}`;
+  const all = files ? `* EXCLUDE (${file})` : "*";
+  return `SELECT ${all} FROM (${rows}) AS "rows" QUALIFY row_number() OVER (PARTITION BY ${keys} ORDER BY ${order}) = 1`;
 }
