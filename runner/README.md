@@ -10,6 +10,12 @@ to Azure storage as the job's managed identity, rebuilds every table from the
 landed files and publishes each one as Parquet. Nothing is kept between runs,
 so running again is always safe.
 
+Checks run in the job as they do on a laptop. When a `fail` check fails, the
+run stops, nothing is published, and the job's log shows the check's message.
+The job does not print the counts of `warn` and `drop` checks, and the
+`_ingestron_checks` and quarantine tables go with its database when the run
+ends.
+
 | Variable                | Meaning                                                                                                  |
 | ----------------------- | -------------------------------------------------------------------------------------------------------- |
 | `INGESTRON_SQL`         | Where `run.sql` is, such as `abfss://deploy@<account>.dfs.core.windows.net/sales/dev/run.sql`. Required. |

@@ -1,0 +1,18 @@
+# A medallion standard: bronze keeps the files as they come; silver cleanses,
+# deduplicates, checks and quarantines, and keeps its checks' results.
+apiVersion: ingestron.io/v1
+kind: Standard
+id: medallion
+packs: [duckdb@2]
+layers:
+  - { name: bronze, does: raw }
+  - name: silver
+    does: [cleanse, deduplicate, check, quarantine]
+    quality: { results: true }
+  - { name: gold, does: [check] }
+cleanse:
+  text: { trim: true, empty: null }
+  timestamps: { to: UTC }
+quality:
+  required: drop
+  quarantine: true

@@ -2,6 +2,7 @@
 // the DuckDB database and publish it as Parquet, and run transforms.
 import type { Method, ResolvedTable } from "@ingestron/definitions";
 import { auditOf, columnsOf, fileColumn } from "../sql/index.js";
+import { uncheckedProblems, zoneProblems } from "./quality-problems.js";
 import { filesIntent, tableAliases } from "./intent.js";
 
 const csv = {
@@ -140,13 +141,12 @@ export const duckdbTable: Method = {
       return [
         `"${table.ingest?.method}" does not say where its files land, so DuckDB cannot read them`,
       ];
-    const unchecked = table.expectations
-      .filter((expectation) => expectation.from === "definition")
-      .map(
-        (expectation) =>
-          `DuckDB tables check no rows yet, so the expectation "${expectation.name}" would not be checked; remove it`,
-      );
-    return [...storeProblems(table), ...auditProblems(table), ...unchecked];
+    return [
+      ...storeProblems(table),
+      ...auditProblems(table),
+      ...uncheckedProblems(table),
+      ...zoneProblems(table),
+    ];
   },
 };
 

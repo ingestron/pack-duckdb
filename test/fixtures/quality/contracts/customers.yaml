@@ -1,0 +1,61 @@
+apiVersion: v3.1.0
+kind: DataContract
+id: crm.customers
+version: 1.0.0
+status: active
+schema:
+  - name: customers
+    logicalType: object
+    description: CRM customers.
+    properties:
+      - { name: id, logicalType: integer, required: true, primaryKey: true }
+      - name: email
+        logicalType: string
+        required: true
+        logicalTypeOptions: { minLength: 3, pattern: "^[^@]+@[^@]+$" }
+      - { name: name, logicalType: string, logicalTypeOptions: { maxLength: 100 } }
+      - name: country
+        logicalType: string
+        quality:
+          - type: library
+            metric: invalidValues
+            arguments: { validValues: [GB, IE, FR] }
+            mustBe: 0
+      - name: status
+        logicalType: string
+        quality:
+          - type: library
+            metric: missingValues
+            arguments: { missingValues: [null, "n/a"] }
+            mustBe: 0
+      - name: segment
+        logicalType: string
+        quality:
+          - type: library
+            metric: missingValues
+            arguments: { missingValues: [unknown] }
+            mustBe: 0
+      - name: phone
+        logicalType: string
+        quality:
+          - { type: library, metric: nullValues, mustBe: 0 }
+      - name: code
+        logicalType: string
+        quality:
+          - type: library
+            metric: invalidValues
+            arguments: { pattern: "^[A-Z]{3}$" }
+            mustBe: 0
+      - name: age
+        logicalType: integer
+        logicalTypeOptions: { minimum: 0, exclusiveMaximum: 150 }
+      - { name: score, logicalType: integer, logicalTypeOptions: { multipleOf: 5 } }
+      - name: tags
+        logicalType: array
+        physicalType: "VARCHAR[]"
+        logicalTypeOptions: { minItems: 1, maxItems: 5, uniqueItems: true }
+      - { name: vip, logicalType: boolean }
+      - { name: signed_up, logicalType: timestamp }
+      - { name: contacted_at, logicalType: timestamp }
+      - { name: last_seen, logicalType: timestamp }
+      - { name: updated_at, logicalType: timestamp, required: true }

@@ -6,6 +6,7 @@ import {
   type IntentUse,
   type SettingAlias,
 } from "@ingestron/definitions";
+import { qualityIntent } from "./quality-intent.js";
 
 /** The pages that give each feature's release status; all were read on 2026-11-09. */
 const pages = {
@@ -67,6 +68,7 @@ export const intent: Record<string, IntentUse> = {
     use: "elsewhere",
     reason: "The landing pack keeps landed files.",
   },
+  ...qualityIntent,
 };
 
 /** What differs for `duckdb-files`, which reads the files in place: nothing lands them. */

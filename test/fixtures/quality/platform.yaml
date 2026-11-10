@@ -1,0 +1,5 @@
+apiVersion: ingestron.io/v1
+kind: Platform
+id: laptop
+settings:
+  duckdb-table: { published: "${values.published}" }

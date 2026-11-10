@@ -1,0 +1,9 @@
+apiVersion: ingestron.io/v1
+kind: Connection
+id: crm
+description: Files the CRM exports every hour, with London wall-clock times.
+connector: files
+connectivity: public
+timezone: Europe/London
+settings:
+  path: ${values.storage}/crm

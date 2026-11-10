@@ -63,14 +63,19 @@ export interface ColumnOptions {
 }
 
 /**
- * Each column cast to its type, under its contract name.
+ * Each column cast to its type, under its contract name; `wrap` cleanses the cast column.
  * @example selectColumns(columns, { renamed: true, resolvedTypes: false }) // 'CAST("id" AS BIGINT) AS "id"'
  */
-export function selectColumns(columns: Column[], options: ColumnOptions): string {
+export function selectColumns(
+  columns: Column[],
+  options: ColumnOptions,
+  wrap: (column: Column, cast: string) => string = (_column, cast) => cast,
+): string {
   return columns
     .map((column) => {
       const source = !options.renamed && column.physicalName ? column.physicalName : column.name;
-      return `CAST(${quote(source)} AS ${typeOf(column, options)}) AS ${quote(column.name)}`;
+      const cast = `CAST(${quote(source)} AS ${typeOf(column, options)})`;
+      return `${wrap(column, cast)} AS ${quote(column.name)}`;
     })
     .join(", ");
 }

@@ -1,0 +1,12 @@
+apiVersion: ingestron.io/v1
+kind: Transform
+id: orders_clean
+description: Orders with a known customer, one row each.
+inputs: [orders]
+contract: crm.orders
+code: |
+  SELECT * FROM {{ tables.orders }} WHERE customer_id > 0
+cleanse:
+  columns:
+    status: { case: upper }
+  deduplicate: { order_by: [updated_at] }

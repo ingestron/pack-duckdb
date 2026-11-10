@@ -1,10 +1,10 @@
 // A small project on disk: files in a folder, loaded and published by DuckDB.
-import { mkdirSync, mkdtempSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, relative } from "node:path";
 import { memoryFiles } from "@ingestron/config";
 import { resolveDefinitions, type Pack, type ResolvedModel } from "@ingestron/definitions";
-import { DuckDBInstance } from "@duckdb/node-api";
+import { DuckDBInstance, StatementType } from "@duckdb/node-api";
 import { expect } from "vitest";
 import { duckdb } from "../src/index.js";
 
@@ -98,4 +98,59 @@ export async function writeQuery(path: string, query: string): Promise<void> {
   const connection = await instance.connect();
   await connection.run(`COPY (${query}) TO '${path}' (FORMAT parquet)`);
   connection.closeSync();
+}
+
+/** What a run printed, query by query, and the error that stopped it, if one did. */
+export interface Printed {
+  printed: Record<string, unknown>[][];
+  error?: string;
+}
+
+/**
+ * Runs SQL one statement at a time, as DuckDB's command line does with -bail: the rows of each
+ * query, which the command line prints, and the first error, which stops the run. Closing the
+ * connection rolls back a transaction the error left open.
+ */
+export async function runPrinting(database: string, sql: string): Promise<Printed> {
+  const instance = await DuckDBInstance.create(database);
+  const connection = await instance.connect();
+  const printed: Record<string, unknown>[][] = [];
+  try {
+    const statements = await connection.extractStatements(sql);
+    for (let index = 0; index < statements.count; index += 1) {
+      const statement = await statements.prepare(index);
+      const reader = await statement.runAndReadAll();
+      if (statement.statementType === StatementType.SELECT)
+        printed.push(reader.getRowObjectsJson());
+    }
+    return { printed };
+  } catch (error) {
+    return { printed, error: (error as Error).message };
+  } finally {
+    connection.closeSync();
+  }
+}
+
+/** Each file under a folder, by its path in the folder. */
+function filesUnder(root: string, folder = root): Record<string, string> {
+  return Object.fromEntries(
+    readdirSync(folder).flatMap((name) => {
+      const path = join(folder, name);
+      if (statSync(path).isDirectory()) return Object.entries(filesUnder(root, path));
+      return [[relative(root, path), readFileSync(path, "utf8")]];
+    }),
+  );
+}
+
+/**
+ * The quality fixture (test/fixtures/quality), its storage and published folders in `where`:
+ * the Databricks pack's synthetic CRM project, for DuckDB.
+ */
+export function qualityProject(where: { root: string }): Record<string, string> {
+  const files = filesUnder(join(import.meta.dirname, "fixtures/quality"));
+  files["project.yaml"] = files["project.yaml"]!.replace(
+    "storage: ./in",
+    `storage: "${join(where.root, "in")}"`,
+  ).replace("published: ./published", `published: "${join(where.root, "published")}"`);
+  return files;
 }

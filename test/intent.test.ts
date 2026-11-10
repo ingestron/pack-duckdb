@@ -82,7 +82,6 @@ describe("the pack's intent coverage", () => {
       ["audit", "source_modified_at"],
       ["rescued", "true"],
       ["storage.clustering", "auto"],
-      ["quality.results", "true"],
     ])
       expect(intentUseOf(duckdb, path!, value), `${path}=${value}`).toEqual({
         use: "not-yet",

@@ -1,0 +1,15 @@
+apiVersion: v3.1.0
+kind: DataContract
+id: crm.orders
+version: 1.0.0
+status: active
+schema:
+  - name: orders
+    logicalType: object
+    description: One row per order, kept current.
+    properties:
+      - { name: id, logicalType: integer, required: true, primaryKey: true }
+      - { name: customer_id, logicalType: integer, required: true }
+      - { name: status, logicalType: string }
+      - { name: total, logicalType: number, physicalType: "DECIMAL(18,2)" }
+      - { name: updated_at, logicalType: timestamp, required: true }

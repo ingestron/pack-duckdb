@@ -1,25 +1,18 @@
 // The SQL that keeps one table: load its files by the mode, or rebuild it from
 // its transform's query, then publish the contract's columns as Parquet.
 // Tables already in the database gain new contract columns, and rows are
-// inserted by name, so a changed contract keeps loading.
+// inserted by name, so a changed contract keeps loading. Columns are cleansed
+// in the SELECT, and rows deduplicated and checked as the model says.
 import type { Column, ResolvedModel, ResolvedTable } from "@ingestron/definitions";
 import { auditOf, auditSelect, readsFileName } from "./audit.js";
-import {
-  fileColumn,
-  literal,
-  quote,
-  readFiles,
-  selectColumns,
-  typeOf,
-  type FilesInput,
-} from "./sql.js";
+import { keepsResults, resultsTableSql, runIdSql } from "./checks.js";
+import { cleansedColumn, deduplicated } from "./cleanse.js";
+import { columnsOf } from "./columns.js";
+import { appendSql, replaceSql, upsertSql, type Target } from "./modes.js";
+import { fileColumn, literal, quote, readFiles, selectColumns, type FilesInput } from "./sql.js";
+import { tableCheckSql } from "./table-checks.js";
 
-interface Target {
-  table: ResolvedTable;
-  /** `"<schema>"."<table>"`. */
-  name: string;
-  resolvedTypes: boolean;
-}
+export { columnsOf } from "./columns.js";
 
 /** The table's statements, one per line, ending with the COPY that publishes it. */
 export function tableSql(
@@ -27,10 +20,11 @@ export function tableSql(
   table: ResolvedTable,
   resolvedTypes: boolean,
 ): string {
-  return [...buildSql(model, table, resolvedTypes), publishSql(table)].join("\n");
+  const runId = keepsResults(table) ? [runIdSql] : [];
+  return [...runId, ...buildSql(model, table, resolvedTypes), publishSql(table)].join("\n");
 }
 
-/** The statements that keep the table in the database. */
+/** The statements that keep the table in the database, then count its table checks. */
 export function buildSql(
   model: ResolvedModel,
   table: ResolvedTable,
@@ -38,18 +32,12 @@ export function buildSql(
 ): string[] {
   const target = { table, name: nameOf(table), resolvedTypes };
   const keep = table.transform ? transformSql(model, target) : filesSql(target);
-  return [`CREATE SCHEMA IF NOT EXISTS ${quote(table.fullName.schema)};`, ...keep];
-}
-
-/**
- * The table's columns: the contract's, then those its landed files carry
- * beyond it (such as ADF's audit columns). A transform's table has only the contract's.
- */
-export function columnsOf(table: ResolvedTable): Column[] {
-  const extra = table.transform
-    ? []
-    : ((table.ingest?.output as { columns?: Column[] } | undefined)?.columns ?? []);
-  return [...table.contract.columns, ...extra];
+  return [
+    `CREATE SCHEMA IF NOT EXISTS ${quote(table.fullName.schema)};`,
+    ...resultsTableSql(table),
+    ...keep,
+    ...tableCheckSql(table, target.name),
+  ];
 }
 
 /** The COPY that publishes the table's columns as Parquet. */
@@ -66,104 +54,61 @@ export function publishSql(table: ResolvedTable): string {
 const nameOf = (table: ResolvedTable) =>
   `${quote(table.fullName.schema)}.${quote(table.fullName.table)}`;
 
+/** Cleanses a column, cast to its type, as the table says. */
+const cleansing = (table: ResolvedTable) => (column: Column, cast: string) =>
+  cleansedColumn(table, column, cast);
+
 function filesSql(target: Target): string[] {
-  const ingest = target.table.ingest!;
+  const { table } = target;
+  const ingest = table.ingest!;
   const output = ingest.output!;
   const files: FilesInput = {
     location: output.location,
     format: output.format === "csv" || output.format === "json" ? output.format : "parquet",
     csv: ingest.settings.csv as FilesInput["csv"],
-    names: columnsOf(target.table).map((column) =>
+    names: columnsOf(table).map((column) =>
       !ingest.renamed && column.physicalName ? column.physicalName : column.name,
     ),
     // Files landed before the extra columns were added read them as NULL.
-    unionByName: columnsOf(target.table).length > target.table.contract.columns.length,
+    unionByName: columnsOf(table).length > table.contract.columns.length,
   };
+  const options = { renamed: ingest.renamed, resolvedTypes: target.resolvedTypes };
   const select = [
-    selectColumns(columnsOf(target.table), {
-      renamed: ingest.renamed,
-      resolvedTypes: target.resolvedTypes,
-    }),
-    ...auditSelect(target.table),
+    selectColumns(columnsOf(table), options, cleansing(table)),
+    ...auditSelect(table),
   ].join(", ");
   const reader = readFiles({ ...files, withFile: true });
-  const mode = target.table.store!.settings.mode;
+  const mode = table.store!.settings.mode;
   if (mode === "append") return appendSql(target, select, reader);
   if (mode === "upsert") return upsertSql(target, select, reader, true);
-  const replaced = readFiles({ ...files, withFile: readsFileName(target.table) });
-  return [`CREATE OR REPLACE TABLE ${target.name} AS SELECT ${select} FROM ${replaced};`];
-}
-
-/** Each file once: its name is kept with its rows, and files already loaded are skipped. */
-function appendSql(target: Target, select: string, reader: string): string[] {
-  const rows = `SELECT ${select}, ${quote(fileColumn)} FROM ${reader}`;
-  return [
-    `CREATE TABLE IF NOT EXISTS ${target.name} AS ${rows} LIMIT 0;`,
-    ...addColumns(target),
-    `INSERT INTO ${target.name} BY NAME ${rows} WHERE ${quote(fileColumn)} NOT IN (SELECT ${quote(fileColumn)} FROM ${target.name});`,
-  ];
-}
-
-/**
- * Rows replace those with the same primary key. A key's row is the last by
- * sequence_by, then (for files) by file name, so every run keeps the same one. Rows the
- * source no longer gives stay. A source that gives no order is not made unique.
- */
-function upsertSql(target: Target, select: string, source: string, files: boolean): string[] {
-  const { table } = target;
-  const keys = table.contract.primaryKey.map(quote).join(", ");
-  const sequence = table.store!.settings.sequence_by;
-  const order = [
-    ...(typeof sequence === "string" ? [`${quote(sequence)} DESC`] : []),
-    ...(files ? [`${quote(fileColumn)} DESC`] : []),
-  ].join(", ");
-  const last = order
-    ? ` QUALIFY row_number() OVER (PARTITION BY ${keys} ORDER BY ${order}) = 1`
-    : "";
-  return [
-    `CREATE TABLE IF NOT EXISTS ${target.name} (${definitions(target).join(", ")}, PRIMARY KEY (${keys}));`,
-    ...addColumns(target),
-    `INSERT OR REPLACE INTO ${target.name} BY NAME SELECT ${select} FROM ${source}${last};`,
-  ];
-}
-
-/** Columns the contract gained since the table was created. */
-function addColumns(target: Target): string[] {
-  return definitions(target).map(
-    (definition) => `ALTER TABLE ${target.name} ADD COLUMN IF NOT EXISTS ${definition};`,
-  );
-}
-
-function definitions({ table, resolvedTypes }: Target): string[] {
-  return [
-    ...columnsOf(table).map(
-      (column) => `${quote(column.name)} ${typeOf(column, { resolvedTypes })}`,
-    ),
-    ...auditOf(table).map((column) => `${quote(column.name)} ${column.type}`),
-  ];
+  if (table.cleanse?.deduplicate) {
+    const rows = `SELECT ${select}, ${quote(fileColumn)} FROM ${reader}`;
+    return replaceSql(target, deduplicated(table, rows, fileColumn));
+  }
+  const replaced = readFiles({ ...files, withFile: readsFileName(table) });
+  return replaceSql(target, `SELECT ${select} FROM ${replaced}`);
 }
 
 /** The transform's query, its inputs named by their tables, selecting the contract's columns. */
 function transformSql(model: ResolvedModel, target: Target): string[] {
-  const code = target.table
+  const { table } = target;
+  const code = table
     .transform!.code.trim()
     .replace(/;\s*$/, "")
     .replace(/\{\{\s*tables\.([A-Za-z0-9_-]+)\s*\}\}/g, (written, input: string) => {
       const found = model.tables.find((item) => item.name === input);
       return found ? `${quote(found.fullName.schema)}.${quote(found.fullName.table)}` : written;
     });
+  const options = { renamed: true, resolvedTypes: target.resolvedTypes };
   const columns = [
-    selectColumns(target.table.contract.columns, {
-      renamed: true,
-      resolvedTypes: target.resolvedTypes,
-    }),
-    ...auditSelect(target.table),
+    selectColumns(table.contract.columns, options, cleansing(table)),
+    ...auditSelect(table),
   ].join(", ");
   // The code sits on its own lines, so a trailing comment cannot swallow the bracket.
   const query = `(\n${code}\n) AS "source"`;
   // With a key, `history: latest` keeps the rows the query no longer gives (by key).
-  if (keepsLatest(target.table)) return upsertSql(target, columns, query, false);
-  return [`CREATE OR REPLACE TABLE ${target.name} AS SELECT ${columns} FROM ${query};`];
+  if (keepsLatest(table)) return upsertSql(target, columns, query, false);
+  return replaceSql(target, deduplicated(table, `SELECT ${columns} FROM ${query}`));
 }
 
 /**
