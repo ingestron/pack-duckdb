@@ -89,8 +89,11 @@ export function appendSql(target: Target, select: string, reader: string): strin
   ];
 }
 
-/** The cleansing operations that can change a value, so two keys can become one. */
-const changing = ["trim", "empty", "map", "case", "default"] as const;
+/**
+ * The cleansing operations that can change a value, so two keys can become one: a time zone
+ * conversion too, which gives one wall time for two around a clock change.
+ */
+const changing = ["timezone", "trim", "empty", "map", "case", "default"] as const;
 
 /** True when the table cleanses a column of its primary key in a way that can change its value. */
 function cleansesKey(table: ResolvedTable): boolean {

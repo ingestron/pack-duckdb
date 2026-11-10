@@ -97,6 +97,38 @@ describe("an upsert whose key is cleansed", () => {
     ]);
   });
 
+  it("keeps one row for two UTC times that are one London time in the hour the clocks go back", async () => {
+    const where = folder();
+    await writeQuery(
+      join(where.input, "orders/a.parquet"),
+      "SELECT * FROM (VALUES (1, TIMESTAMP '2026-10-25 00:30:00'), (2, TIMESTAMP '2026-10-25 01:30:00'), (3, TIMESTAMP '2026-10-25 03:00:00')) t(id, seen)",
+    );
+    const byTime = byName
+      .replace("      - { name: name, logicalType: string, primaryKey: true }\n", "")
+      .replace(
+        "      - { name: seq, logicalType: integer }",
+        "      - { name: seen, logicalType: timestamp, primaryKey: true }",
+      );
+    const files = project(where, "{ mode: upsert }", {
+      "orders.yaml": byTime,
+      "flow.yaml":
+        "apiVersion: ingestron.io/v1\nkind: Flow\nid: shop\nsource: shop\ntables:\n  orders: { object: orders/*.parquet, contract: orders, cleanse: { columns: { seen: { timezone: { from: UTC, to: Europe/London } } } } }\n",
+    });
+    const sql = runSql(files);
+    expect(sql).toContain('AS "rows" QUALIFY row_number() OVER (PARTITION BY "seen" ORDER BY');
+    const database = join(where.root, "ingestron.duckdb");
+    expect(
+      await execute(
+        database,
+        sql,
+        "SELECT id, strftime(seen, '%Y-%m-%d %H:%M') AS seen FROM bronze.orders ORDER BY seen",
+      ),
+    ).toEqual([
+      { id: "2", seen: "2026-10-25 01:30" },
+      { id: "3", seen: "2026-10-25 03:00" },
+    ]);
+  });
+
   it("leaves an upsert whose key is not cleansed as it was", () => {
     const sql = runSql(project(folder(), "{ mode: upsert }"));
     expect(sql).not.toContain('AS "rows" QUALIFY');
