@@ -25,14 +25,24 @@ export const runIdSql = "SET VARIABLE ingestron_run_id = CAST(uuid() AS VARCHAR)
 const lists = (table: ResolvedTable, duty: LayerDuty) =>
   Array.isArray(table.does) && table.does.includes(duty);
 
-/** The table's expectations the pack runs: all of them where its layer checks, else none. */
+/**
+ * True when the pack runs the table's checks: its layer's `does` lists `check`, or is `raw`,
+ * where every action is `warn` and the checks only count.
+ */
+export const counts = (table: ResolvedTable): boolean =>
+  table.does === "raw" || lists(table, "check");
+
+/** True when the table's layer's `does` is `raw`: its checks are counted, every row is kept. */
+export const raw = (table: ResolvedTable): boolean => table.does === "raw";
+
+/** The table's expectations the pack runs: all of them where its layer counts checks, else none. */
 export function rowChecksOf(table: ResolvedTable): Expectation[] {
-  return lists(table, "check") ? table.expectations : [];
+  return counts(table) ? table.expectations : [];
 }
 
-/** The table's contract table checks the pack runs: all of them where its layer checks, else none. */
+/** The table's contract table checks the pack runs: all of them where its layer counts checks, else none. */
 export function tableChecksOf(table: ResolvedTable): ResolvedTable["contract"]["tableChecks"] {
-  return lists(table, "check") ? table.contract.tableChecks : [];
+  return counts(table) ? table.contract.tableChecks : [];
 }
 
 /** True when the table keeps its checks' results: it resolves `results` and runs a check. */

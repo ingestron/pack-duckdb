@@ -1,6 +1,6 @@
 // Checks by layer (spec/behaviour.md, "Quality and cleansing"): none where the layer's `does`
-// does not list check, and the SQL is as before; row checks, table checks and quarantine
-// where it does, run with DuckDB.
+// does not list check, and the SQL is as before; counted as warn in a raw layer; row checks,
+// table checks and quarantine where it lists check, run with DuckDB.
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
@@ -70,6 +70,40 @@ describe("a layer whose does does not list check", () => {
     expect(generate(files).result.diagnostics.map(({ message }) => message)).toContain(
       '"duckdb-table" for table "orders": DuckDB checks rows only in a layer whose does lists check, so the expectation "positive" would not be checked; add check to the layer\'s does, or remove it.',
     );
+  });
+});
+
+describe("a raw layer", () => {
+  const raw = (lines: string[] = []) =>
+    standard(["layers: [{ name: bronze, does: raw }, silver, gold]", ...lines]);
+
+  it("counts every check as warn, keeps every row, and reports nothing", async () => {
+    const where = folder();
+    await writeParquet(join(where.input, "orders/a.parquet"), "(1, 'a', 1), (2, NULL, 1)");
+    const files = project(where, "{}", {
+      "standard.yaml": raw(["quality: { required: fail, default: fail }"]),
+      "orders.yaml": checked(),
+      "flow.yaml": flowWith(", expectations: [{ name: positive, check: id > 1 }]"),
+    });
+    const { result } = generate(files);
+    expect(result.diagnostics).toEqual([]);
+    const database = join(where.root, "ingestron.duckdb");
+    const run = await runPrinting(database, runSql(files));
+    expect(run.error).toBeUndefined();
+    const counted = run.printed.flat().filter((row) => row.table === "bronze.orders");
+    for (const check of ["name_not_null", "positive"])
+      expect(counted).toContainEqual({
+        table: "bronze.orders",
+        check,
+        action: "warn",
+        failing_rows: "1",
+        passed: false,
+      });
+    expect(counted.every((row) => row.action === "warn")).toBe(true);
+    expect(await execute(database, "SELECT 1", ordered)).toEqual([
+      { id: "1", name: "a" },
+      { id: "2", name: null },
+    ]);
   });
 });
 

@@ -1,5 +1,5 @@
 // What the pack does with the quality and cleansing paths of intent (spec/behaviour.md,
-// "Quality and cleansing"): checks in run.sql, only in a layer whose does lists check;
+// "Quality and cleansing"): checks in run.sql, only in a layer whose does lists check or is raw;
 // quarantine only where it lists quarantine; results, cleansing and deduplicate wherever the
 // model gives them.
 import type { FeatureStatus, IntentUse, LayerDuty } from "@ingestron/definitions";

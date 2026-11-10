@@ -4,9 +4,13 @@
 import type { ResolvedTable } from "@ingestron/definitions";
 import { hasZone } from "../sql/index.js";
 
-/** A flow's or transform's own expectations where the layer does not check rows, so DuckDB would not. */
+/**
+ * A flow's or transform's own expectations where the layer does not check rows, so DuckDB would
+ * not. A raw layer counts them, each with the action warn.
+ */
 export function uncheckedProblems(table: ResolvedTable): string[] {
-  if (Array.isArray(table.does) && table.does.includes("check")) return [];
+  if (table.does === "raw" || (Array.isArray(table.does) && table.does.includes("check")))
+    return [];
   return table.expectations
     .filter((expectation) => expectation.from === "definition")
     .map(

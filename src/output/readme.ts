@@ -2,7 +2,7 @@
 // Apps job in Azure, and what its checks print and keep.
 import type { ResolvedModel, ResolvedTable } from "@ingestron/definitions";
 import { remote } from "../methods/index.js";
-import { keepsResults, quarantineOf, rowChecksOf, tableChecksOf } from "../sql/index.js";
+import { keepsResults, quarantineOf, raw, rowChecksOf, tableChecksOf } from "../sql/index.js";
 
 /** Whether the paths are all in Azure, all local, or both; a table with no path counts for neither. */
 function placeOf(tables: ResolvedTable[]): "azure" | "local" | "mixed" {
@@ -82,6 +82,9 @@ check keeps those rows, a \`drop\` check leaves them out. When a \`fail\` check
 fails, the run stops, nothing is published, and the job's log shows the
 check's message.`;
 
+const rawCounted = `In a layer whose \`does\` is \`raw\`, \`run.sql\` also counts the checks: each
+is \`warn\`, so every row is kept and the rows that fail are only counted.`;
+
 const resultsKept = `Each check's result is also kept in the \`_ingestron_checks\` table of the
 table's schema, with the run's id and time. A run that stops keeps no results.`;
 
@@ -97,9 +100,10 @@ line and client libraries include.`;
 
 /** What the tables' checks print and keep, and how zones are converted; none without them. */
 function qualitySections(tables: ResolvedTable[], inJob: boolean): string[] {
-  const checks = tables.some(
-    (table) => rowChecksOf(table).length > 0 || tableChecksOf(table).length > 0,
-  );
+  const runs = (table: ResolvedTable) =>
+    rowChecksOf(table).length > 0 || tableChecksOf(table).length > 0;
+  const checks = tables.some(runs);
+  const counted = tables.some((table) => raw(table) && runs(table));
   const quarantine = tables.some((table) => quarantineOf(table) !== undefined);
   const converts = tables.some((table) =>
     Object.values(table.cleanse?.columns ?? {}).some((column) => column.timezone),
@@ -107,6 +111,7 @@ function qualitySections(tables: ResolvedTable[], inJob: boolean): string[] {
   const results = tables.some(keepsResults);
   return [
     checks ? (inJob ? jobChecks : checksRun) : "",
+    counted ? rawCounted : "",
     results ? resultsKept : "",
     quarantine ? quarantined : "",
     inJob && (results || quarantine) ? jobDatabase : "",

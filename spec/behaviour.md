@@ -82,8 +82,8 @@ A method check problem when `upsert` has no primary key, `sequence_by` is not a
 contract column, an audit column has the name of a column of the table (or of
 `_ingestron_file` when the mode is not `replace`), a table's files have no recorded location or a format other
 than parquet, csv or json, `append` reads a file its ingest replaces each run, a flow or transform writes
-its own expectations in a layer whose `does` does not list `check` (DuckDB
-checks rows only where it does: `DuckDB checks rows only in a layer whose does
+its own expectations in a layer whose `does` does not list `check` and is not
+`raw` (DuckDB checks rows only where it does: `DuckDB checks rows only in a layer whose does
 lists check, so the expectation "<name>" would not be checked; add check to the
 layer's does, or remove it`), a column whose type has a time zone (`TIMESTAMP
 WITH TIME ZONE`, `TIMESTAMPTZ`) converts its zone (`the column "<name>" is
@@ -116,11 +116,11 @@ does with each value. The sources are in [references.md](references.md).
 | `retention.landed_files`                                          | Kept by the landing pack                                                                           | elsewhere |
 | `load.cursor`, `load.deletes.*`                                   | A cursor column; deletions                                                                         | not yet   |
 | `rescued`, `storage.*`, `retention.*`                             | A rescued column; clustering; time travel and log                                                  | not yet   |
-| `quality.rules` (every kind)                                      | A check in `run.sql`, in a layer whose `does` lists `check`                                        | used      |
-| `quality.actions: warn`                                           | Rows are kept; the run prints how many fail, in a layer whose `does` lists `check`                 | used      |
+| `quality.rules` (every kind)                                      | A check in `run.sql`, in a layer whose `does` lists `check` or is `raw`                            | used      |
+| `quality.actions: warn`                                           | Rows are kept; the run prints how many fail, in a layer whose `does` lists `check` or is `raw`     | used      |
 | `quality.actions: drop`                                           | Failing rows are not inserted; the run prints how many, in a layer whose `does` lists `check`      | used      |
 | `quality.actions: fail`                                           | `error()` before the insert: nothing is published, in a layer whose `does` lists `check`           | used      |
-| `quality.table-checks`                                            | Counted after the table is built, in a layer whose `does` lists `check`                            | used      |
+| `quality.table-checks`                                            | Counted after the table is built, in a layer whose `does` lists `check` or is `raw`                | used      |
 | `quality.quarantine`                                              | An insert of the rows a `drop` check leaves out, in a layer whose `does` lists `quarantine`        | used      |
 | `quality.results`                                                 | Rows in `"<schema>"."_ingestron_checks"`, in the run's transaction                                 | used      |
 | `cleanse.trim`, `empty`, `map`, `case`, `default`                 | `trim`, `nullif`, `CASE`, `upper` or `lower`, `coalesce`, in the table's `SELECT`                  | used      |
@@ -146,8 +146,10 @@ one is missing. An entry is one of:
   and the date checked), for every `used` row above. `quality.rules`,
   `quality.actions` and `quality.table-checks` are used only where the table's
   layer's `does` lists `check`, and `quality.quarantine` only where it lists
-  `quarantine` (`onlyWhere`). In any other layer, including one that gives no
-  `does`, the definitions package reports each rule, action, table check and
+  `quarantine` (`onlyWhere`). A layer whose `does` is `raw` meets `check`
+  (definitions specification, section 5): there every action is `warn`, and
+  the pack counts the checks and keeps every row. In any other layer,
+  including one that gives no `does`, the definitions package reports each rule, action, table check and
   quarantine as `NOT_APPLIED` with the hint "Add `check` to the layer's `does`
   to apply it here." (or `quarantine`), and the table's SQL is what it was
   before checks existed. `quality.results`, every `cleanse` path and
@@ -197,7 +199,7 @@ DuckDB has no Platform fields of its own, so the pack's section allows none.
 Columns, types, physical names and primary keys are used. `required`,
 `logicalTypeOptions`, `unique` and the object's and each column's `quality`
 are used too: the definitions package makes them row checks and table checks,
-which the pack runs in a layer whose `does` lists `check` (and reports as
+which the pack runs in a layer whose `does` lists `check` or is `raw` (and reports as
 `NOT_APPLIED` elsewhere, as "Coverage" says). Relationships and tags are not
 used yet; the other facts are documentation.
 
@@ -279,9 +281,11 @@ the definitions package's `DEDUPLICATE_MODE` error.
 
 ### Row checks
 
-A table in a layer whose `does` lists `check` runs its expectations. A table
-in any other layer runs none, and its SQL is what it was before checks
-existed. With `<c>` the column in double quotes and `<v>` a value (a number as
+A table in a layer whose `does` lists `check` runs its expectations. So does
+a table in a layer whose `does` is `raw`: every action there is `warn`, so
+the run counts and prints the failing rows and keeps every row, with no drop,
+stop or quarantine. A table in any other layer, including one that gives no
+`does`, runs none, and its SQL is what it was before checks existed. With `<c>` the column in double quotes and `<v>` a value (a number as
 it is, any other value as SQL text), the condition a row passes is written
 from the expectation's `rule`:
 
@@ -346,8 +350,8 @@ no expectations runs none of these steps.
 
 ### Table checks
 
-A table in a layer whose `does` lists `check` runs its contract's table checks
-after it is built, over all its rows. The pack declares no `checks`
+A table in a layer whose `does` lists `check` or is `raw` runs its contract's
+table checks after it is built (in a `raw` layer, each as `warn`), over all its rows. The pack declares no `checks`
 capability: it counts them in its own run, with nothing shared to turn on or
 grant, so the definitions package gives a DuckDB table its table checks (and
 `unique`) whatever the Platform's `manage.checks` says (definitions
@@ -439,8 +443,10 @@ check's failing rows (in Azure, that the job's log shows them), that a `fail`
 check stops the run (in Azure, with its message in the job's log), and, when a
 table keeps results or quarantines rows, where they are (in Azure, that they
 last only for that run, since the job starts with an empty database); and,
-when a table converts time zones, that DuckDB's ICU extension does it. Without
-checks or conversions the README is what it was.
+when a table converts time zones, that DuckDB's ICU extension does it. When a
+table in a `raw` layer runs checks, it adds that such a layer only counts them:
+each is `warn` and every row is kept. Without checks or conversions the README
+is what it was.
 
 ## Running in Azure
 

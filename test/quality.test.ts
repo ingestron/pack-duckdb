@@ -1,5 +1,5 @@
 // Quality and cleansing (spec/behaviour.md, "Quality and cleansing"), run with DuckDB on the
-// shared synthetic CRM fixture: bronze keeps the files as they come, silver cleanses,
+// shared synthetic CRM fixture: bronze keeps the files as they come and counts its checks, silver cleanses,
 // deduplicates, checks and quarantines, and keeps its checks' results.
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -10,24 +10,32 @@ describe("the CRM fixture", () => {
   it("resolves, applying silver's checks, cleansing, quarantine and results", async () => {
     const { result } = await crm();
     expect(result.diagnostics.filter((item) => item.severity === "error")).toEqual([]);
-    // Bronze keeps raw rows, so its 20 rules (17 of customers, 3 of orders) are not applied
-    // there; silver applies all of its own, and every cleansing operation.
-    const notApplied = result.diagnostics.filter((item) => item.code === "NOT_APPLIED");
-    expect(notApplied).toHaveLength(20);
-    expect(new Set(notApplied.map((item) => item.hint))).toEqual(
-      new Set(["Add `check` to the layer's `does` to apply it here."]),
-    );
+    // Bronze is raw, so its checks count, each with the action warn: no rule is not applied.
+    expect(result.diagnostics.filter((item) => item.code === "NOT_APPLIED")).toEqual([]);
+    const bronze = result.model?.tables.filter((table) => table.layer === "bronze") ?? [];
+    expect(bronze.length).toBeGreaterThan(0);
+    for (const table of bronze)
+      expect(new Set(table.expectations.map((item) => item.action))).toEqual(new Set(["warn"]));
     expect(result.model?.tables.find((table) => table.name === "orders_clean")?.timezone).toBe(
       "UTC",
     );
   });
 
-  it("keeps bronze's SQL as it was: no checks, no cleansing", async () => {
-    const { sql } = await crm();
+  it("counts bronze's checks, keeps every row, and cleanses nothing there", async () => {
+    const { where, sql } = await crm();
     const bronze = sql.slice(sql.indexOf('CREATE SCHEMA IF NOT EXISTS "bronze"'));
-    expect(bronze.slice(0, bronze.indexOf('CREATE SCHEMA IF NOT EXISTS "silver"'))).not.toMatch(
-      /ingestron_rows|AT TIME ZONE|trim\(/,
+    const bronzeSql = bronze.slice(0, bronze.indexOf('CREATE SCHEMA IF NOT EXISTS "silver"'));
+    expect(bronzeSql).toContain("ingestron_checked");
+    expect(bronzeSql).not.toMatch(
+      /AT TIME ZONE|trim\(|_quarantine|, 'drop', |, 'fail', | WHERE coalesce/,
     );
+    const run = await runPrinting(join(where.root, "ingestron.duckdb"), sql);
+    expect(run.error).toBeUndefined();
+    const counted = run.printed.flat().filter((row) => String(row.table).startsWith("bronze."));
+    expect(counted.length).toBeGreaterThan(0);
+    expect(new Set(counted.map((row) => row.action))).toEqual(new Set(["warn"]));
+    // A row that fails a check is still in bronze.
+    expect(counted.some((row) => Number(row.failing_rows) > 0)).toBe(true);
   });
 
   it("drops failing rows, keeps the latest row per key, and cleanses", async () => {
