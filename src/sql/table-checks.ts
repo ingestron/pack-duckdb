@@ -29,23 +29,21 @@ function countQuery(table: ResolvedTable, check: TableCheck, from: string): stri
     const query = (check.query ?? "").replaceAll("${object}", from);
     return `SELECT (${query}) AS "counted", (SELECT count(*) FROM ${from}) AS "total"`;
   }
-  if (check.metric === "duplicateValues" && check.columns.length === 0) {
-    // The whole row: the contract's columns, so audit and file columns do not make rows differ.
-    const columns = table.contract.columns.map((column) => quote(column.name)).join(", ");
-    return `SELECT count(*) - count(DISTINCT "rows") AS "counted", count(*) AS "total" FROM (SELECT ${columns} FROM ${from}) AS "rows"`;
-  }
-  return `SELECT ${countOf(check)} AS "counted", count(*) AS "total" FROM ${from}`;
+  return `SELECT ${countOf(table, check)} AS "counted", count(*) AS "total" FROM ${from}`;
 }
 
-function countOf(check: TableCheck): string {
+function countOf(table: ResolvedTable, check: TableCheck): string {
   const columns = check.columns.map(quote);
   const [column = "*"] = columns;
   switch (check.metric) {
     case "rowCount":
       return "count(*)";
     case "duplicateValues":
-      // Several columns are counted as one row value: DuckDB's count takes one argument.
-      return `count(*) - count(DISTINCT ${columns.length > 1 ? `(${columns.join(", ")})` : column})`;
+      if (columns.length === 1) return `count(*) - count(DISTINCT ${column})`;
+      // The whole row is the contract's columns, so audit and file columns do not make rows differ.
+      return distinctRows(
+        columns.length > 1 ? columns : table.contract.columns.map((item) => quote(item.name)),
+      );
     case "nullValues":
       return `countif(${column} IS NULL)`;
     case "missingValues":
@@ -55,6 +53,17 @@ function countOf(check: TableCheck): string {
     default:
       return `countif(${column} IS NOT NULL AND NOT ${validOf(check, column)})`;
   }
+}
+
+/**
+ * The duplicates of several columns: all rows less the distinct rows of their values. DuckDB's
+ * count takes one argument, so the values are one `row(…)`, named column by column so that no
+ * column can be read in its place; a row with a null part is left out of the distinct rows, as
+ * Spark's `count(DISTINCT a, b)` leaves it out, so it counts as a duplicate.
+ */
+function distinctRows(columns: string[]): string {
+  const whole = columns.map((column) => `${column} IS NOT NULL`).join(" AND ");
+  return `count(*) - count(DISTINCT CASE WHEN ${whole} THEN row(${columns.join(", ")}) END)`;
 }
 
 /** For invalidValues: within `validValues`, or matching `pattern`. */

@@ -369,9 +369,10 @@ grant, so the definitions package gives a DuckDB table its table checks (and
 `unique`) whatever the Platform's `manage.checks` says (definitions
 specification, section 7.1). The pack counts them as the Databricks pack does,
 in DuckDB's SQL (`count(*)` for `rowCount`, `count(*) - count(DISTINCT <c>)` for
-`duplicateValues` of one column, `count(DISTINCT (<c>, …))` of several, and
-`count(DISTINCT "rows")` over `(SELECT <contract columns> FROM <table>) AS "rows"`
-for the whole row, `countif(<c> IS NULL)` for `nullValues`, and so on, with
+`duplicateValues` of one column,
+`count(*) - count(DISTINCT CASE WHEN <c> IS NOT NULL AND … THEN row(<c>, …) END)`
+for several, and the same over the contract's columns for the whole row,
+`countif(<c> IS NULL)` for `nullValues`, and so on, with
 `regexp_matches` for a pattern; a `sql` check's query with `${object}` replaced
 by the table's name). Each gives `"counted"` and `"total"`, all rows; with
 `unit: percent` the rule compares `CASE WHEN "total" = 0 THEN 0 ELSE "counted" * 100.0 / "total" END`,
@@ -390,13 +391,14 @@ table check that does not pass raises
 `"failing_rows"` is the rows the rule counted; for `rowCount`, every row.
 
 `count(DISTINCT …)` takes one argument in DuckDB, so several columns, or the
-whole row, are counted as one row value. A row value with a null part is a
-value like any other: rows that hold the same values, nulls included, count
-as duplicates, and a row with a null part counts as distinct. Spark's
-`count(DISTINCT a, b)` leaves out a row with a null part, so on the same rows
-the Databricks pack can count more duplicates. One column leaves nulls out on
-both. The whole row is the contract's columns, so the audit columns and an
-`append` table's `_ingestron_file` do not make rows differ.
+whole row, are counted as one row value, `row(<c>, …)`, which names each
+column, so a column of any name, `rows` among them, is read as itself. A row
+with a null part is left out of the distinct rows, so it counts as a
+duplicate: Spark's `count(DISTINCT a, b)` leaves it out on Databricks, and the
+Synapse pack leaves it out too, so the three count the same rows. One column
+leaves nulls out on all three. The whole row is the contract's columns, so the
+audit columns and an `append` table's `_ingestron_file` do not make rows
+differ.
 
 ### Results
 

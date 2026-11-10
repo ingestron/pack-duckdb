@@ -59,7 +59,11 @@ ZONE` gives the wall-clock `TIMESTAMP` in the given zone; "Time zone support
   `coalesce`, `nullif`, `error(message)` ("Throws the given error message"),
   `uuid()` and `getvariable(name)`.
 - [CASE expression](https://duckdb.org/docs/2.0/sql/expressions/case): the
-  simple form `CASE <x> WHEN <value> THEN <result> … ELSE <x> END`, for `map`.
+  simple form `CASE <x> WHEN <value> THEN <result> … ELSE <x> END`, for `map`;
+  and (accessed 2026-11-11) `CASE WHEN <condition> THEN <result> END`: "If no
+  `ELSE` clause is provided and none of the conditions match, the `CASE`
+  expression will return `NULL`", which leaves a row with a null part out of
+  a `duplicateValues` count.
 - [Regular expressions](https://duckdb.org/docs/2.0/sql/functions/regular_expressions):
   `regexp_matches` is true when the text contains the pattern anywhere, as
   `RLIKE` does; patterns are RE2's.
@@ -69,12 +73,28 @@ ZONE` gives the wall-clock `TIMESTAMP` in the given zone; "Time zone support
 - [Aggregate functions](https://duckdb.org/docs/2.0/sql/functions/aggregates):
   `countif` and `count(DISTINCT …)`, for table checks. `count` takes one
   argument (DuckDB refuses `count(DISTINCT a, b)` and `count(DISTINCT *)`), so
-  several columns are one row value.
+  several columns are one row value; `count` leaves out a null argument.
 - [Struct data type](https://duckdb.org/docs/2.0/sql/data_types/struct):
   "Tuples are created using the `row` function or, if there are at least two
   expressions, using parentheses"; tuples compare with `IS NOT DISTINCT FROM`
-  semantics, two nulls in one place being equal, so `count(DISTINCT (a, b))`
-  counts a row with a null part as a value.
+  semantics, two nulls in one place being equal, so a row with a null part is
+  a value of its own. The pack writes `row(<c>, …)` (for one column too) inside
+  `CASE WHEN <c> IS NOT NULL AND … THEN … END`, so a row with a null part is
+  null and `count(DISTINCT …)` leaves it out, as Spark does.
+- [Numeric functions](https://duckdb.org/docs/2.0/sql/functions/numeric)
+  (accessed 2026-11-11): the operator `%`, "Modulo (remainder)" (`5 % 4` is
+  `1`), for the `multipleOf` check, `<c> % <value> = 0`.
+- [Comparisons](https://duckdb.org/docs/2.0/sql/expressions/comparison_operators)
+  (accessed 2026-11-11): `a BETWEEN x AND y` is "equivalent to `x <= a AND a
+<= y`" and `a NOT BETWEEN x AND y` to "`x > a OR a > y`", both limits
+  included, for a table check's `mustBeBetween` and `mustNotBeBetween`; the
+  page notes the equivalence holds when `a`, `x` and `y` are of one type, and
+  the pack compares numbers with numbers.
+- [List type](https://duckdb.org/docs/2.0/sql/data_types/list) (accessed
+  2026-11-11): "Lists can be created using the `list_value(expr, ...)` function
+  or the equivalent bracket notation `[expr, ...]`", which writes a CSV
+  reader's `names = [...]` and the list `list_filter` reads for
+  `_failed_checks`.
 - [Python API reference](https://duckdb.org/docs/2.0/clients/python/reference/index):
   `DuckDBPyConnection.extract_statements(query)` parses the query into
   `Statement` objects, whose `type` and `query` the runner reads to run
