@@ -2,7 +2,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { duckdb } from "../src/index.js";
-import { folder, generate, project } from "./project.js";
+import { folder, generate, project, qualityProject } from "./project.js";
 
 const readme = readFileSync(new URL("../README.md", import.meta.url), "utf8").replace(/\s+/g, " ");
 
@@ -127,5 +127,35 @@ describe("the generated README when every path is local", () => {
     expect(readme).toContain('duckdb -bail ingestron.duckdb -c ".read build/duckdb/dev/run.sql"');
     expect(readme).not.toContain("Container Apps");
     expect(readme).not.toContain("sign-in");
+  });
+});
+
+describe("the generated README's checks", () => {
+  /** The CRM fixture's README, its files read from `storage` and published to `published`. */
+  const crm = (storage: string, published: string) => {
+    const files = qualityProject(folder());
+    files["project.yaml"] = files["project.yaml"]!.replace(
+      /storage: .*/,
+      `storage: "${storage}"`,
+    ).replace(/published: .*/, `published: "${published}"`);
+    return (generate(files).files["README.md"] ?? "").replace(/\s+/g, " ");
+  };
+
+  it("says the job's log shows the counts and a fail check's message, and the tables last one run", () => {
+    const readme = crm(azureInput, azurePublished);
+    expect(readme).toContain("The job's log shows each check with the rows that fail it");
+    expect(readme).toContain("the job's log shows the check's message");
+    expect(readme).toContain(
+      "The job starts each run with an empty database, so the results and quarantine tables last only for that run.",
+    );
+    expect(readme).not.toContain("prints each check");
+  });
+
+  it("says a laptop run prints each check, and keeps results and quarantine in the database", () => {
+    const where = folder();
+    const readme = crm(where.input, where.published);
+    expect(readme).toContain("prints each check with the rows that fail it");
+    expect(readme).toContain("A run that stops keeps no results.");
+    expect(readme).not.toContain("job");
   });
 });

@@ -67,7 +67,18 @@ ZONE` gives the wall-clock `TIMESTAMP` in the given zone; "Time zone support
   `list_distinct` (removes duplicates and nulls) and `list_filter` with a
   `lambda x: …` function, which builds `_failed_checks`.
 - [Aggregate functions](https://duckdb.org/docs/2.0/sql/functions/aggregates):
-  `countif` and `count(DISTINCT …)`, for table checks.
+  `countif` and `count(DISTINCT …)`, for table checks. `count` takes one
+  argument (DuckDB refuses `count(DISTINCT a, b)` and `count(DISTINCT *)`), so
+  several columns are one row value.
+- [Struct data type](https://duckdb.org/docs/2.0/sql/data_types/struct):
+  "Tuples are created using the `row` function or, if there are at least two
+  expressions, using parentheses"; tuples compare with `IS NOT DISTINCT FROM`
+  semantics, two nulls in one place being equal, so `count(DISTINCT (a, b))`
+  counts a row with a null part as a value.
+- [Python API reference](https://duckdb.org/docs/2.0/clients/python/reference/index):
+  `DuckDBPyConnection.extract_statements(query)` parses the query into
+  `Statement` objects, whose `type` and `query` the runner reads to run
+  `run.sql` one statement at a time and log each query's rows.
 - [QUALIFY clause](https://duckdb.org/docs/2.0/sql/query_syntax/qualify):
   filters on a window function, `row_number() OVER (PARTITION BY … ORDER BY …)`,
   for `deduplicate`.

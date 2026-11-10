@@ -76,17 +76,21 @@ const checksRun = `\`run.sql\` checks the rows of the tables in layers whose \`d
 keeps those rows, a \`drop\` check leaves them out. When a \`fail\` check
 fails, the run stops and nothing is published.`;
 
-const resultsKept = (inJob: boolean) =>
-  `Each check's result is also kept in the \`_ingestron_checks\` table of the
-table's schema, with the run's id and time. ${
-    inJob
-      ? "The job starts each run with an empty database, so it keeps no results\nfrom earlier runs."
-      : "A run that stops keeps no results."
-  }`;
+const jobChecks = `\`run.sql\` checks the rows of the tables in layers whose \`does\` lists
+\`check\`. The job's log shows each check with the rows that fail it: a \`warn\`
+check keeps those rows, a \`drop\` check leaves them out. When a \`fail\` check
+fails, the run stops, nothing is published, and the job's log shows the
+check's message.`;
+
+const resultsKept = `Each check's result is also kept in the \`_ingestron_checks\` table of the
+table's schema, with the run's id and time. A run that stops keeps no results.`;
 
 const quarantined = `The rows a \`drop\` check leaves out are kept in \`<schema>.<table>_quarantine\`,
 with \`_failed_checks\` naming the checks they failed. Quarantine tables are
 not published.`;
+
+const jobDatabase = `The job starts each run with an empty database, so the results and
+quarantine tables last only for that run.`;
 
 const zones = `Time zones are converted with DuckDB's ICU extension, which DuckDB's command
 line and client libraries include.`;
@@ -100,10 +104,12 @@ function qualitySections(tables: ResolvedTable[], inJob: boolean): string[] {
   const converts = tables.some((table) =>
     Object.values(table.cleanse?.columns ?? {}).some((column) => column.timezone),
   );
+  const results = tables.some(keepsResults);
   return [
-    checks ? checksRun : "",
-    tables.some(keepsResults) ? resultsKept(inJob) : "",
+    checks ? (inJob ? jobChecks : checksRun) : "",
+    results ? resultsKept : "",
     quarantine ? quarantined : "",
+    inJob && (results || quarantine) ? jobDatabase : "",
     converts ? zones : "",
   ];
 }

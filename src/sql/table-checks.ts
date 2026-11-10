@@ -12,7 +12,7 @@ export function tableCheckSql(table: ResolvedTable, name: string): string[] {
   if (checks.length === 0) return [];
   const rows = checks.map(
     (check) =>
-      `  SELECT ${shownName(table)} AS "table", ${literal(check.name)} AS "check", ${literal(check.action)} AS "action", CAST(coalesce("counted", 0) AS BIGINT) AS "failing_rows", ${comparison(check)} AS "passed" FROM (${countQuery(check, name)})`,
+      `  SELECT ${shownName(table)} AS "table", ${literal(check.name)} AS "check", ${literal(check.action)} AS "action", CAST(coalesce("counted", 0) AS BIGINT) AS "failing_rows", ${comparison(check)} AS "passed" FROM (${countQuery(table, check, name)})`,
   );
   return [
     `CREATE OR REPLACE TEMP TABLE "ingestron_checked" AS\n${rows.join("\n  UNION ALL\n")};`,
@@ -24,10 +24,15 @@ export function tableCheckSql(table: ResolvedTable, name: string): string[] {
 }
 
 /** A query whose one row has `counted`, the number the rule compares, and `total`, all rows. */
-function countQuery(check: TableCheck, from: string): string {
+function countQuery(table: ResolvedTable, check: TableCheck, from: string): string {
   if (check.metric === "sql") {
     const query = (check.query ?? "").replaceAll("${object}", from);
     return `SELECT (${query}) AS "counted", (SELECT count(*) FROM ${from}) AS "total"`;
+  }
+  if (check.metric === "duplicateValues" && check.columns.length === 0) {
+    // The whole row: the contract's columns, so audit and file columns do not make rows differ.
+    const columns = table.contract.columns.map((column) => quote(column.name)).join(", ");
+    return `SELECT count(*) - count(DISTINCT "rows") AS "counted", count(*) AS "total" FROM (SELECT ${columns} FROM ${from}) AS "rows"`;
   }
   return `SELECT ${countOf(check)} AS "counted", count(*) AS "total" FROM ${from}`;
 }
@@ -39,7 +44,8 @@ function countOf(check: TableCheck): string {
     case "rowCount":
       return "count(*)";
     case "duplicateValues":
-      return `count(*) - count(DISTINCT ${columns.length > 0 ? columns.join(", ") : "*"})`;
+      // Several columns are counted as one row value: DuckDB's count takes one argument.
+      return `count(*) - count(DISTINCT ${columns.length > 1 ? `(${columns.join(", ")})` : column})`;
     case "nullValues":
       return `countif(${column} IS NULL)`;
     case "missingValues":

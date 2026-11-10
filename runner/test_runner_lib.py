@@ -2,7 +2,7 @@
 # local paths a cloud job cannot see.
 import unittest
 
-from runner_lib import image_tags, local_paths, remote, secret_sql
+from runner_lib import image_tags, local_paths, remote, run_statements, secret_sql
 
 
 class SecretTest(unittest.TestCase):
@@ -75,6 +75,60 @@ class SqlTextTest(unittest.TestCase):
     def test_a_quote_in_a_quoted_name_does_not_hide_later_paths(self):
         sql = 'SELECT "it\'s" FROM t;\nSELECT * FROM read_parquet(\'./later.parquet\');'
         self.assertEqual(local_paths(sql), ["./later.parquet"])
+
+
+class FakeType:
+    def __init__(self, name):
+        self.name = name
+
+
+class FakeStatement:
+    def __init__(self, kind, query):
+        self.type = FakeType(kind)
+        self.query = query
+
+
+class FakeConnection:
+    """Runs the statements given, failing at one whose query is FAIL."""
+
+    def __init__(self, statements, rows):
+        self.statements = statements
+        self.rows = rows
+        self.ran = []
+        self.description = None
+
+    def extract_statements(self, sql):
+        return self.statements
+
+    def execute(self, query):
+        if query == "FAIL":
+            raise RuntimeError("The check failed")
+        self.ran.append(query)
+        self.description = [("table",), ("failing_rows",)]
+        return self
+
+    def fetchall(self):
+        return self.rows
+
+
+class StatementsTest(unittest.TestCase):
+    def test_each_query_result_is_logged(self):
+        connection = FakeConnection(
+            [FakeStatement("CREATE", "CREATE"), FakeStatement("SELECT", "SELECT")],
+            [("silver.orders", 2)],
+        )
+        lines = []
+        run_statements(connection, "run.sql", lines.append)
+        self.assertEqual(connection.ran, ["CREATE", "SELECT"])
+        self.assertEqual(lines, ["table=silver.orders, failing_rows=2"])
+
+    def test_the_first_error_stops_the_run(self):
+        connection = FakeConnection(
+            [FakeStatement("SELECT", "FAIL"), FakeStatement("COPY", "COPY")], []
+        )
+        with self.assertRaises(RuntimeError):
+            run_statements(connection, "run.sql", print)
+        self.assertEqual(connection.ran, [])
 
 
 class TagsTest(unittest.TestCase):

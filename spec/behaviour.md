@@ -347,13 +347,15 @@ no expectations runs none of these steps.
 ### Table checks
 
 A table in a layer whose `does` lists `check` runs its contract's table checks
-after it is built, over all its rows. The definitions package makes a
-contract's table checks only when the Platform turns checks on, `manage: {
-checks: true }` (definitions specification, section 7.1), and otherwise
-reports each as `CAPABILITY_OFF`; nothing needs granting for DuckDB, so a
-Platform that wants them writes that. The pack counts them with the queries the Databricks pack
-counts with (`count(*)` for `rowCount`, `count(*) - count(DISTINCT …)` for
-`duplicateValues`, `countif(<c> IS NULL)` for `nullValues`, and so on, with
+after it is built, over all its rows. The pack declares no `checks`
+capability: it counts them in its own run, with nothing shared to turn on or
+grant, so the definitions package gives a DuckDB table its table checks (and
+`unique`) whatever the Platform's `manage.checks` says (definitions
+specification, section 7.1). The pack counts them as the Databricks pack does,
+in DuckDB's SQL (`count(*)` for `rowCount`, `count(*) - count(DISTINCT <c>)` for
+`duplicateValues` of one column, `count(DISTINCT (<c>, …))` of several, and
+`count(DISTINCT "rows")` over `(SELECT <contract columns> FROM <table>) AS "rows"`
+for the whole row, `countif(<c> IS NULL)` for `nullValues`, and so on, with
 `regexp_matches` for a pattern; a `sql` check's query with `${object}` replaced
 by the table's name). Each gives `"counted"` and `"total"`, all rows; with
 `unit: percent` the rule compares `CASE WHEN "total" = 0 THEN 0 ELSE "counted" * 100.0 / "total" END`,
@@ -370,6 +372,15 @@ Then they are printed and kept as results as row checks are, and a `fail`
 table check that does not pass raises
 `error(format('The table check "{}" failed on {}, so nothing is published.', "check", "table"))`.
 `"failing_rows"` is the rows the rule counted; for `rowCount`, every row.
+
+`count(DISTINCT …)` takes one argument in DuckDB, so several columns, or the
+whole row, are counted as one row value. A row value with a null part is a
+value like any other: rows that hold the same values, nulls included, count
+as duplicates, and a row with a null part counts as distinct. Spark's
+`count(DISTINCT a, b)` leaves out a row with a null part, so on the same rows
+the Databricks pack can count more duplicates. One column leaves nulls out on
+both. The whole row is the contract's columns, so the audit columns and an
+`append` table's `_ingestron_file` do not make rows differ.
 
 ### Results
 
@@ -424,10 +435,12 @@ The quarantine is not published; it stays in the database.
 ### Where results appear
 
 The generated README says, when a table runs checks, that the run prints each
-check's failing rows, that a `fail` check stops the run, and, when a table
-keeps results, where they are; and, when a table converts time zones, that
-DuckDB's ICU extension does it. Without checks or conversions the README is
-what it was.
+check's failing rows (in Azure, that the job's log shows them), that a `fail`
+check stops the run (in Azure, with its message in the job's log), and, when a
+table keeps results or quarantines rows, where they are (in Azure, that they
+last only for that run, since the job starts with an empty database); and,
+when a table converts time zones, that DuckDB's ICU extension does it. Without
+checks or conversions the README is what it was.
 
 ## Running in Azure
 
@@ -447,8 +460,10 @@ The runner (`runner/`) runs `INGESTRON_SQL` in a fresh database at
 or writes paths outside Azure storage (any reader, a list of files, a file read
 as a table, or COPY's target; comments and text in quotes are not paths) unless
 `INGESTRON_ALLOW_LOCAL=1`. Exit codes: 0 built,
-1 failed or local paths, 2 no `INGESTRON_SQL`. It runs `run.sql` as one
-script, so it prints no query's result: a `fail` check that stops the run
-shows its message in the job's log, but `warn` and `drop` counts are not
-printed, and the results and quarantine tables go with the fresh database. Its
-README says so.
+1 failed or local paths, 2 no `INGESTRON_SQL`. It runs `run.sql` one
+statement at a time (`extract_statements`), as DuckDB's command line does with
+`-bail`: the first error stops the run, and the transaction it leaves open
+commits nothing. It logs each query's rows, one line per row as
+`<column>=<value>` pairs joined by `, `, so each check's counts reach the job's
+log, and a `fail` check's message is in the error it logs. The results and
+quarantine tables last only for that run's database. Its README says so.

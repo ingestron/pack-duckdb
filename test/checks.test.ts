@@ -39,20 +39,11 @@ const flowWith = (table: string) =>
 
 const ordered = "SELECT id, name FROM bronze.orders ORDER BY id";
 
-/**
- * The project with the Platform's checks on: the definitions package makes a contract's table
- * checks only then (its specification, section 7.1).
- */
-const checksOn = (files: Record<string, string>) => ({
-  ...files,
-  "platform.yaml": `${files["platform.yaml"]}manage: { checks: true }\n`,
-});
-
 describe("a layer whose does does not list check", () => {
   it("builds the table as before, and reports each check as not applied", () => {
     const where = folder();
     const plain = generate(project(where));
-    const files = checksOn(project(where, "{}", { "orders.yaml": checked() }));
+    const files = project(where, "{}", { "orders.yaml": checked() });
     const { result, files: built } = generate(files);
     expect(built["run.sql"]).toBe(plain.files["run.sql"]);
     expect(result.diagnostics.map(({ code, message, hint }) => ({ code, message, hint }))).toEqual([
@@ -106,14 +97,17 @@ describe("a layer whose does lists check", () => {
     expect(await execute(database, "SELECT 1", ordered)).toEqual([{ id: "1", name: "a" }]);
   });
 
-  it("counts table checks after the table is built: warn prints, fail stops", async () => {
+  it("counts table checks after the table is built, with no manage.checks: warn prints, fail stops", async () => {
     const where = folder();
     await writeParquet(join(where.input, "orders/a.parquet"), "(1, 'a', 1), (1, 'b', 2)");
     const unique =
       "{ type: library, metric: duplicateValues, arguments: { properties: [id] }, mustBe: 0 }";
-    const warned = checksOn(
-      project(where, "{}", { "standard.yaml": checking(), "orders.yaml": checked(unique) }),
-    );
+    // DuckDB runs table checks itself: the Platform turns nothing on (no manage.checks).
+    const warned = project(where, "{}", {
+      "standard.yaml": checking(),
+      "orders.yaml": checked(unique),
+    });
+    expect(warned["platform.yaml"]).not.toContain("manage");
     const database = join(where.root, "ingestron.duckdb");
     const run = await runPrinting(database, runSql(warned));
     expect(run.error).toBeUndefined();
@@ -125,12 +119,10 @@ describe("a layer whose does lists check", () => {
         passed: false,
       }),
     );
-    const failed = checksOn(
-      project(where, "{}", {
-        "standard.yaml": checking("{}", ["quality: { default: fail }"]),
-        "orders.yaml": checked(unique),
-      }),
-    );
+    const failed = project(where, "{}", {
+      "standard.yaml": checking("{}", ["quality: { default: fail }"]),
+      "orders.yaml": checked(unique),
+    });
     const stopped = await runPrinting(join(where.root, "other.duckdb"), runSql(failed));
     expect(stopped.error).toMatch(
       /The table check ".+" failed on bronze\.orders, so nothing is published\./,
