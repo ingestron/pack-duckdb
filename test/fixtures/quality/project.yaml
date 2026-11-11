@@ -1,0 +1,14 @@
+id: crm
+name: Customer records
+values:
+  storage: ./in
+  published: ./published
+environments:
+  dev: {}
+imports:
+  - standard.yaml
+  - platform.yaml
+  - connections/*.yaml
+  - flows/*.yaml
+  - transforms/*.yaml
+  - contracts/*.yaml

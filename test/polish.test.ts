@@ -141,11 +141,18 @@ describe("settings DuckDB cannot honour", () => {
         "{ name: seq, logicalType: integer, physicalName: Sequence }",
       ),
     });
-    expect(messages(files)).toEqual([]);
+    // Written as settings, both are reported as now written as intent; nothing else is wrong.
+    expect(messages(files)).toEqual([
+      '"mode" is now written as intent: history: latest.',
+      '"sequence_by" is now written as intent: sequence: SEQ.',
+    ]);
     const byPhysical = project(folder(), "{ mode: upsert, sequence_by: Sequence }", {
       "orders.yaml": files["orders.yaml"]!,
     });
-    expect(messages(byPhysical)).toEqual([]);
+    expect(messages(byPhysical)).toEqual([
+      '"mode" is now written as intent: history: latest.',
+      '"sequence_by" is now written as intent: sequence: Sequence.',
+    ]);
   });
 
   it("refuses sequence_by that is not a contract column", () => {

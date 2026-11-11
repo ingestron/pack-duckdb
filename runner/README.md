@@ -10,6 +10,13 @@ to Azure storage as the job's managed identity, rebuilds every table from the
 landed files and publishes each one as Parquet. Nothing is kept between runs,
 so running again is always safe.
 
+The job runs `run.sql` one statement at a time, as DuckDB's command line does
+with `-bail`: it stops at the first error and commits nothing. Its log shows
+each query's rows, one line per row, such as each check with the rows that fail
+it. When a `fail` check fails, the run stops, nothing is published, and the log
+shows the check's message. The `_ingestron_checks` and quarantine tables last
+only for that run's database, which the next run starts again empty.
+
 | Variable                | Meaning                                                                                                  |
 | ----------------------- | -------------------------------------------------------------------------------------------------------- |
 | `INGESTRON_SQL`         | Where `run.sql` is, such as `abfss://deploy@<account>.dfs.core.windows.net/sales/dev/run.sql`. Required. |

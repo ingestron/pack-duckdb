@@ -4,7 +4,7 @@ import type { Pack } from "@ingestron/definitions";
 import { build } from "./output/index.js";
 import { contract } from "./methods/index.js";
 import { duckdbFiles, duckdbLanded, duckdbSql, duckdbTable } from "./methods/index.js";
-import { request } from "./methods/index.js";
+import { intent, request } from "./methods/index.js";
 import { duckdbTypes } from "./sql/index.js";
 
 /**
@@ -38,6 +38,8 @@ export const duckdb: Pack = {
     "duckdb-table": duckdbTable,
     "duckdb-sql": duckdbSql,
   },
+  platformSection: { type: "object", additionalProperties: false, properties: {} },
+  intent,
   build,
   contract,
   request,

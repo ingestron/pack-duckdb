@@ -1,7 +1,8 @@
 # The runner's pure parts: the DuckDB secret that signs in as the job's managed
-# identity, and the local paths in a run.sql that a cloud job cannot see.
+# identity, the local paths in a run.sql that a cloud job cannot see, and running
+# run.sql one statement at a time.
 import re
-from typing import Mapping
+from typing import Callable, Mapping
 
 _REMOTE = ("abfss://", "abfs://", "az://", "azure://")
 _LITERAL = r"'(?:[^']|'')*'"
@@ -76,6 +77,22 @@ def local_paths(sql: str) -> list[str]:
                 text = sql[match.start(group) : match.end(group)]
                 found += [item[1:-1].replace("''", "'") for item in re.findall(_LITERAL, text)]
     return [path for path in found if not remote(path)]
+
+
+def run_statements(connection, sql: str, log: Callable[[str], None]) -> None:
+    """Runs the SQL one statement at a time, as DuckDB's command line does with -bail.
+
+    Each query's rows are logged, one line per row, as name=value pairs, so the counts of
+    a run's checks reach the job's log. The first error stops the run: it is raised, the
+    statements after it do not run, and the transaction it leaves open commits nothing.
+    """
+    for statement in connection.extract_statements(sql):
+        connection.execute(statement.query)
+        if getattr(statement.type, "name", "") != "SELECT":
+            continue
+        names = [column[0] for column in connection.description or []]
+        for row in connection.fetchall():
+            log(", ".join(f"{name}={value}" for name, value in zip(names, row)))
 
 
 _VERSION = re.compile(r"^(\d+)\.\d+\.\d+(-[0-9A-Za-z.-]+)?$")

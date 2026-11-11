@@ -1,6 +1,9 @@
 // The pack's methods: read landed files or a folder of files, keep a table in
 // the DuckDB database and publish it as Parquet, and run transforms.
 import type { Method, ResolvedTable } from "@ingestron/definitions";
+import { auditOf, columnsOf, fileColumn } from "../sql/index.js";
+import { uncheckedProblems, zoneProblems } from "./quality-problems.js";
+import { filesIntent, tableAliases } from "./intent.js";
 
 const csv = {
   type: "object",
@@ -61,6 +64,8 @@ export const duckdbFiles: Method = {
   connectors: ["files"],
   produces: "files",
   defaults: { format: "parquet", csv: { header: true, delimiter: "," } },
+  intentDefaults: { load: { mode: "full" } },
+  intent: filesIntent,
   placement: { standard: ["csv"] },
   settings: {
     type: "object",
@@ -96,6 +101,8 @@ export const duckdbTable: Method = {
   accepts: ["files", "query"],
   produces: "table",
   defaults: { mode: "replace" },
+  intentDefaults: { history: "none" },
+  aliases: tableAliases,
   placement: { platform: ["published"] },
   settings: {
     type: "object",
@@ -134,19 +141,28 @@ export const duckdbTable: Method = {
       return [
         `"${table.ingest?.method}" does not say where its files land, so DuckDB cannot read them`,
       ];
-    const unchecked = table.expectations
-      .filter((expectation) => expectation.from === "definition")
-      .map(
-        (expectation) =>
-          `DuckDB tables check no rows yet, so the expectation "${expectation.name}" would not be checked; remove it`,
-      );
-    return [...storeProblems(table), ...unchecked];
+    return [
+      ...storeProblems(table),
+      ...auditProblems(table),
+      ...uncheckedProblems(table),
+      ...zoneProblems(table),
+    ];
   },
 };
 
 /** Settings duckdb-table cannot honour for this table: its mode, key and landed files. */
 function storeProblems(table: ResolvedTable): string[] {
   return [...keyProblems(table), ...filesProblems(table)];
+}
+
+/** Audit columns named like a column the table already has, or like the append mode's file column. */
+function auditProblems(table: ResolvedTable): string[] {
+  const taken = columnsOf(table).map((column) => column.name.toLowerCase());
+  if (table.store!.settings.mode !== "replace" && !table.transform)
+    taken.push(fileColumn.toLowerCase());
+  return auditOf(table)
+    .filter((column) => taken.includes(column.name.toLowerCase()))
+    .map((column) => `the audit column "${column.name}" is already a column of the table`);
 }
 
 function keyProblems(table: ResolvedTable): string[] {

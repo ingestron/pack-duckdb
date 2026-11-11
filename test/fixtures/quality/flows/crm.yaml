@@ -1,0 +1,16 @@
+apiVersion: ingestron.io/v1
+kind: Flow
+id: crm
+description: Customers and orders from the CRM, as they come.
+source: crm
+tables:
+  customers:
+    object: customers/*.parquet
+    contract: crm.customers
+  orders:
+    object: orders/*.csv
+    contract: crm.orders
+    history: latest
+    sequence: updated_at
+    ingest:
+      with: { format: csv }

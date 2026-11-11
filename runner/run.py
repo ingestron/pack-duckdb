@@ -7,7 +7,7 @@ import sys
 import time
 from typing import Mapping
 
-from runner_lib import local_paths, remote, secret_sql
+from runner_lib import local_paths, remote, run_statements, secret_sql
 
 DATABASE = "/tmp/ingestron.duckdb"
 USAGE = (
@@ -49,7 +49,8 @@ def main(environ: Mapping[str, str]) -> int:
                 file=sys.stderr,
             )
             return 1
-        connection.execute(sql)
+        # One statement at a time, so each check's counts reach the job's log.
+        run_statements(connection, sql, lambda line: print(line, flush=True))
     except (duckdb.Error, OSError) as error:
         print(f"The run failed: {error}", file=sys.stderr)
         return 1

@@ -70,6 +70,12 @@ describe("upsert", () => {
     expect(
       generate(files).result.diagnostics.map(({ code, message }) => ({ code, message })),
     ).toEqual([
+      { code: "SETTING_MOVED", message: '"mode" is now written as intent: history: latest.' },
+      {
+        code: "NOT_APPLIED",
+        message:
+          "The notNull rule isn't applied on duckdb: it is applied only in a layer whose does lists check.",
+      },
       {
         code: "METHOD_CHECK",
         message: '"duckdb-table" for table "orders": upsert needs the contract\'s primaryKey.',

@@ -114,6 +114,26 @@ const result = loadDefinitions("definitions", { packs: [duckdb], environment: "l
 if (result.model) console.log(duckdb.build(result.model)["run.sql"] ?? "");
 ```
 
+## What changed in 2.2
+
+The pack reads the standard's intent: what a table keeps and how its data is
+loaded, such as `history: latest`, written once for every engine. A project
+that declares no intent gets the same SQL as with 2.1.
+
+- Two `duckdb-table` settings are now other names for intent. They still work
+  and build the same SQL, but each is a `SETTING_MOVED` warning with the fix
+  `Write as intent`: `mode: replace` is `history: none`, `mode: upsert` is
+  `history: latest`, and `sequence_by` is `sequence`. `mode: append` stays a
+  setting.
+- New output appears only where the project declares it:
+  - `audit: loaded_at` adds a load time column to every table the pack keeps,
+    and `audit: source_file` adds the file each row came from to a flow's
+    table;
+  - `history: latest` on a transform's table with a primary key upserts the
+    query's rows in place of replacing the table.
+- The Platform has a `duckdb` section, which takes no fields.
+- Needs `@ingestron/definitions` 1.13 or later.
+
 ## What changed in 2.0
 
 - The pack is `duckdb@2`, like every pack ingestron 2.0 uses. There, a standard that names `duckdb@1` gets `PACK_VERSION`, with a fix that changes it to `duckdb@2`.

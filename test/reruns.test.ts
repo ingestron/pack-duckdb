@@ -105,7 +105,8 @@ describe("problems found before running", () => {
         "apiVersion: ingestron.io/v1\nkind: Flow\nid: shop\nsource: shop\ntables:\n  orders:\n    object: orders/*.parquet\n    contract: orders\n    expectations:\n      - { name: positive, check: id > 0, action: fail }\n",
     });
     expect(messages(files)).toEqual([
-      '"duckdb-table" for table "orders": DuckDB tables check no rows yet, so the expectation "positive" would not be checked; remove it.',
+      "The fail action isn't applied on duckdb: it is applied only in a layer whose does lists check.",
+      '"duckdb-table" for table "orders": DuckDB checks rows only in a layer whose does lists check, so the expectation "positive" would not be checked; add check to the layer\'s does, or remove it.',
     ]);
   });
 });
