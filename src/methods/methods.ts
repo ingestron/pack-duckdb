@@ -170,7 +170,7 @@ function keyProblems(table: ResolvedTable): string[] {
   const columns = table.contract.columns;
   const problems: string[] = [];
   if (mode === "upsert" && table.contract.primaryKey.length === 0)
-    problems.push("upsert needs the contract's primaryKey");
+    problems.push("upsert needs the primaryKey in the contract or the source metadata");
   // DuckDB names are case-insensitive, and the files may hold a column's physicalName.
   const known = columns.flatMap((column) => [column.name, column.physicalName ?? column.name]);
   if (
@@ -178,7 +178,7 @@ function keyProblems(table: ResolvedTable): string[] {
     !known.some((name) => name.toLowerCase() === sequence.toLowerCase())
   )
     problems.push(
-      `sequence_by "${sequence}" is not a column of the contract; use one of ${columns.map((column) => column.name).join(", ")}`,
+      `sequence_by "${sequence}" is not a column of the contract or the source metadata; use one of ${columns.map((column) => column.name).join(", ")}`,
     );
   return problems;
 }

@@ -78,7 +78,8 @@ describe("upsert", () => {
       },
       {
         code: "METHOD_CHECK",
-        message: '"duckdb-table" for table "orders": upsert needs the contract\'s primaryKey.',
+        message:
+          '"duckdb-table" for table "orders": upsert needs the primaryKey in the contract or the source metadata.',
       },
     ]);
   });
