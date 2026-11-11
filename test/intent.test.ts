@@ -66,6 +66,29 @@ describe("the pack's intent coverage", () => {
       });
   });
 
+  it("has no access control, so every access path and value does not apply, on every method", () => {
+    const reason = "DuckDB has no access control.";
+    const values: [string, string?][] = [
+      ["access.grants", "read"],
+      ["access.grants", "write"],
+      ["access.exact", "true"],
+      ["access.masks", "null"],
+      ["access.masks", "hash"],
+      ["access.masks", "redact"],
+      ["access.masks", "function"],
+      ["access.filters", "true"],
+    ];
+    for (const method of Object.values(duckdb.methods)) {
+      const coverage = { intent: { ...duckdb.intent, ...(method as Method).intent } };
+      expect(intentCoverageGaps(coverage)).toEqual([]);
+      for (const [path, value] of values)
+        expect(intentUseOf(coverage, path, value), `${path}=${value}`).toEqual({
+          use: "not-applicable",
+          reason,
+        });
+    }
+  });
+
   it("plans reading each file once, which the mode setting does", () => {
     expect(intentUseOf(duckdb, "load.mode", "files")).toEqual({
       use: "not-yet",

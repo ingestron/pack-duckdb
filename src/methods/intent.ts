@@ -1,5 +1,6 @@
 // What the pack does with each intent path and value (spec/behaviour.md, "Intent").
-// Every other path and value is planned: the mapping in the spec is the target.
+// Every other path and value is planned, except access, which does not apply: the mapping in
+// the spec is the target.
 import {
   intentPaths,
   type FeatureStatus,
@@ -29,6 +30,13 @@ const landing: IntentUse = {
   reason: "The ingest step that lands the files adds it.",
 };
 
+const noScheduler: IntentUse = {
+  use: "not-applicable",
+  reason: "DuckDB runs locally or as one job; it has no scheduler.",
+};
+/** DuckDB has no users, roles or permissions, so no access path or value applies (spec, "Access"). */
+const noAccess: IntentUse = { use: "not-applicable", reason: "DuckDB has no access control." };
+
 /** The audit values the ingest step adds, which reading files in place cannot. */
 const ingestAudit = ["run_id", "window_start", "window_end", "source_object", "source_connection"];
 
@@ -37,12 +45,7 @@ function planned(): Record<string, IntentUse> {
   return Object.fromEntries(
     Object.keys(intentPaths).map((path) => [
       path,
-      path.startsWith("operations.")
-        ? ({
-            use: "not-applicable",
-            reason: "DuckDB runs locally or as one job; it has no scheduler.",
-          } satisfies IntentUse)
-        : notYet,
+      path.startsWith("operations.") ? noScheduler : path.startsWith("access.") ? noAccess : notYet,
     ]),
   );
 }

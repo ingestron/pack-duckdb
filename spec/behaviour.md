@@ -139,6 +139,7 @@ does with each value. The sources are in [references.md](references.md).
 | `cleanse.timezone`                                                | `(<x> AT TIME ZONE '<from>') AT TIME ZONE '<to>'`, in the table's `SELECT`                         | used      |
 | `deduplicate`                                                     | `QUALIFY row_number() … = 1`, in a table that is replaced each run                                 | used      |
 | `operations.*`                                                    | DuckDB runs locally or as one job; it has no scheduler                                             | n/a       |
+| `access.*`                                                        | DuckDB has no access control                                                                       | n/a       |
 
 Every `used` feature is generally available on the page the pack checked on
 2026-11-09, or for quality and cleansing on 2026-11-10 (references.md). Audit columns come after the contract's columns
@@ -172,6 +173,9 @@ one is missing. An entry is one of:
   where they are, so nothing lands them: they are `not-yet` for that method;
 - `not-applicable` ("DuckDB runs locally or as one job; it has no scheduler."),
   for `operations`;
+- `not-applicable` ("DuckDB has no access control."), for `access.grants`,
+  `access.exact`, `access.masks` and `access.filters`, on every method (see
+  Access);
 - `not-yet` with the reason "Planned.", for every other path and value: the
   table above is the target, not what the pack builds today.
 
@@ -205,6 +209,22 @@ method check problem for `upsert`.
 ### The Platform's section
 
 DuckDB has no Platform fields of its own, so the pack's section allows none.
+
+## Access
+
+DuckDB has no users, roles or permissions, so the pack applies no access. The
+definitions package resolves each table's access (definitions specification,
+section 8.2) and judges it against the pack's coverage; the pack never judges
+again.
+
+Every `access` path and value is `not-applicable` with the reason "DuckDB has
+no access control." on every method: `access.grants` (`read` and `write`),
+`access.exact`, `access.masks` (every mask) and `access.filters`. A role, an
+exact grant mode, a mask or a filter on a table that DuckDB keeps is
+`NOT_APPLIED`, a warning, for example `Access for the role "analysts" in
+shop.orders isn't applied on duckdb: DuckDB has no access control.` The pack
+generates no grant, mask or filter, so its files are the ones it built before
+access existed.
 
 ## Contracts
 
