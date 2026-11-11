@@ -169,8 +169,13 @@ function keyProblems(table: ResolvedTable): string[] {
   const { mode, sequence_by: sequence } = table.store!.settings;
   const columns = table.contract.columns;
   const problems: string[] = [];
+  const fromMetadata = table.contract.origin === "metadata";
   if (mode === "upsert" && table.contract.primaryKey.length === 0)
-    problems.push("upsert needs the primaryKey in the contract or the source metadata");
+    problems.push(
+      fromMetadata
+        ? "upsert needs the primaryKey in the source metadata"
+        : "upsert needs the contract's primaryKey",
+    );
   // DuckDB names are case-insensitive, and the files may hold a column's physicalName.
   const known = columns.flatMap((column) => [column.name, column.physicalName ?? column.name]);
   if (
@@ -178,7 +183,7 @@ function keyProblems(table: ResolvedTable): string[] {
     !known.some((name) => name.toLowerCase() === sequence.toLowerCase())
   )
     problems.push(
-      `sequence_by "${sequence}" is not a column of the contract or the source metadata; use one of ${columns.map((column) => column.name).join(", ")}`,
+      `sequence_by "${sequence}" is not a column of ${fromMetadata ? "the source metadata" : "the contract"}; use one of ${columns.map((column) => column.name).join(", ")}`,
     );
   return problems;
 }

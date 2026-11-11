@@ -52,23 +52,30 @@ describe("a table with no contract", () => {
   });
 
   it("upserts on the key the metadata gives", () => {
-    const files = withoutContract(folder(), "{ mode: upsert, sequence_by: seq }");
+    const where = folder();
+    const files = withoutContract(where, "{ mode: upsert, sequence_by: seq }");
     const { result, files: built } = generate(files);
     expect(result.diagnostics.filter((item) => item.severity === "error")).toEqual([]);
-    expect(built["run.sql"]).toContain('"id"');
-  });
-
-  it("refuses upsert when neither the contract nor the metadata has a key", () => {
-    const files = withoutContract(folder(), "{ mode: upsert, sequence_by: seq }", false);
-    expect(generate(files).result.diagnostics.map((item) => item.message)).toContain(
-      '"duckdb-table" for table "orders": upsert needs the primaryKey in the contract or the source metadata.',
+    const sql = built["run.sql"];
+    expect(sql).toContain(
+      'CREATE TABLE IF NOT EXISTS "bronze"."orders" ("id" BIGINT, "name" VARCHAR, "seq" BIGINT, PRIMARY KEY ("id"));',
+    );
+    expect(sql).toContain(
+      `INSERT OR REPLACE INTO "bronze"."orders" BY NAME SELECT CAST("id" AS BIGINT) AS "id", CAST("name" AS VARCHAR) AS "name", CAST("seq" AS BIGINT) AS "seq" FROM read_parquet('${where.input}/orders/*.parquet', filename = '_ingestron_file') QUALIFY row_number() OVER (PARTITION BY "id" ORDER BY "seq" DESC, "_ingestron_file" DESC) = 1;`,
     );
   });
 
-  it("refuses a sequence column that neither the contract nor the metadata has", () => {
+  it("refuses upsert when the source metadata has no key", () => {
+    const files = withoutContract(folder(), "{ mode: upsert, sequence_by: seq }", false);
+    expect(generate(files).result.diagnostics.map((item) => item.message)).toContain(
+      '"duckdb-table" for table "orders": upsert needs the primaryKey in the source metadata.',
+    );
+  });
+
+  it("refuses a sequence column that the source metadata does not have", () => {
     const files = withoutContract(folder(), "{ mode: upsert, sequence_by: updated }");
     expect(generate(files).result.diagnostics.map((item) => item.message)).toContain(
-      '"duckdb-table" for table "orders": sequence_by "updated" is not a column of the contract or the source metadata; use one of id, name, seq.',
+      '"duckdb-table" for table "orders": sequence_by "updated" is not a column of the source metadata; use one of id, name, seq.',
     );
   });
 });

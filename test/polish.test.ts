@@ -157,7 +157,7 @@ describe("settings DuckDB cannot honour", () => {
 
   it("refuses sequence_by that is not a contract column", () => {
     expect(messages(project(folder(), "{ mode: upsert, sequence_by: updated }"))).toContain(
-      '"duckdb-table" for table "orders": sequence_by "updated" is not a column of the contract or the source metadata; use one of id, name, seq.',
+      '"duckdb-table" for table "orders": sequence_by "updated" is not a column of the contract; use one of id, name, seq.',
     );
   });
 

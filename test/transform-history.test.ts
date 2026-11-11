@@ -90,9 +90,7 @@ describe("history: latest on a transform", () => {
     const { result } = generate(files(folder(), "history: latest", "required: true"));
     expect(
       result.diagnostics.filter((item) => item.severity === "error").map((item) => item.message),
-    ).toEqual([
-      '"duckdb-table" for table "latest": upsert needs the primaryKey in the contract or the source metadata.',
-    ]);
+    ).toEqual(['"duckdb-table" for table "latest": upsert needs the contract\'s primaryKey.']);
   });
 
   it("leaves a keyed transform with `mode: upsert` as a setting alone as it was", () => {
