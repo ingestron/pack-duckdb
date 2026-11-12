@@ -56,9 +56,9 @@ columns> FROM …) TO '<published>/<schema>.<table>.parquet' (FORMAT parquet)`:
 - `upsert`: the table is created with the table's columns and primary key;
   then `INSERT OR REPLACE … BY NAME`, keeping a key's last row by `sequence_by`
   when set, then by file name.
-- In both, each of the table's columns is added when missing (`ALTER TABLE … ADD
-COLUMN IF NOT EXISTS`), so a table whose contract or source metadata gains
-  columns keeps loading.
+- In both, each of the table's columns is added when missing
+  (`ALTER TABLE … ADD COLUMN IF NOT EXISTS`), so a table whose contract or
+  source metadata gains columns keeps loading.
 - When the table cleanses a column of its primary key with an operation that
   can change its value (`timezone`, `trim`, `empty`, `map`, `case` or
   `default`), two rows can reach the insert with one key: `" a"` and `"a"`
