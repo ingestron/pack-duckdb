@@ -45,7 +45,7 @@ change from version 1, and the SQL is the same.
 
 ## Each table
 
-`CREATE SCHEMA IF NOT EXISTS`, then by mode, then `COPY (SELECT <contract
+`CREATE SCHEMA IF NOT EXISTS`, then by mode, then `COPY (SELECT <the table's
 columns> FROM …) TO '<published>/<schema>.<table>.parquet' (FORMAT parquet)`:
 
 - `replace`: `CREATE OR REPLACE TABLE … AS SELECT <columns> FROM <reader>`.
@@ -84,8 +84,8 @@ Each column is `CAST(<file column> AS <type>) AS <name>`. The file column is the
 the standard lists `duckdb@` first, else from the `logicalType` (`string`
 `VARCHAR`, `integer` `BIGINT`, `number` `DOUBLE`, `boolean` `BOOLEAN`, `date`
 `DATE`, `timestamp` `TIMESTAMP`, `time` `TIME`). Readers: `read_parquet`,
-`read_csv` (with `header` and `delim`, and `names` in contract order when
-`header` is false) and `read_json_auto`. A folder's trailing `/` or `\` is
+`read_csv` (with `header` and `delim`, and `names` in the table's column
+order when `header` is false) and `read_json_auto`. A folder's trailing `/` or `\` is
 dropped. Names are in double
 quotes with `"` doubled; text in single quotes with `'` doubled.
 
@@ -463,7 +463,7 @@ table's mode:
   quarantine is rebuilt each run:
   `CREATE OR REPLACE TABLE <quarantine> AS SELECT *, <failed> AS "_failed_checks" FROM "temp"."ingestron_rows" WHERE NOT <keep>;`
 - `append` adds each file once, so the quarantine is created (empty, from the
-  table) and gains the contract's new columns as the table does, then gains
+  table) and gains the table's new columns as the table does, then gains
   the rows: `INSERT INTO <quarantine> BY NAME SELECT *, <failed> AS "_failed_checks" FROM "temp"."ingestron_rows" WHERE NOT <keep>;`.
   It keeps `_ingestron_file`, and the files already loaded are those in the
   table or in its quarantine, so a file whose every row failed is not read
