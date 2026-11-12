@@ -67,7 +67,7 @@ COLUMN IF NOT EXISTS`), so a table whose contract or source metadata gains
   flow's `upsert` and a transform's `history: latest` alike, the rows are first
   made unique on the cleansed key: a `SELECT` of their own, so the window reads
   the key as cleansed, then
-  `QUALIFY row_number() OVER (PARTITION BY <key> ORDER BY <sequence> DESC, <file> DESC, <every contract column> DESC) = 1`,
+  `QUALIFY row_number() OVER (PARTITION BY <key> ORDER BY <sequence> DESC, <file> DESC, <every column of the table> DESC) = 1`,
   the sequence only when set and the file only for a flow (its
   `_ingestron_file` is left out of the result). Every run keeps the same row.
   Any other `upsert` is written as above, unchanged.
@@ -92,7 +92,7 @@ quotes with `"` doubled; text in single quotes with `'` doubled.
 ## Checks
 
 A method check problem when `upsert` has no primary key, `sequence_by` is not a
-contract column, an audit column has the name of a column of the table (or of
+column of the table's contract or source metadata, an audit column has the name of a column of the table (or of
 `_ingestron_file` when the mode is not `replace`), a table's files have no recorded location or a format other
 than parquet, csv or json, `append` reads a file its ingest replaces each run, a flow or transform writes
 its own expectations in a layer whose `does` does not list `check` and is not
@@ -143,10 +143,10 @@ does with each value. The sources are in [references.md](references.md).
 | `access.*`                                                        | DuckDB has no access control                                                                       | n/a       |
 
 Every `used` feature is generally available on the page the pack checked on
-2026-11-09, or for quality and cleansing on 2026-11-10 (references.md). Audit columns come after the contract's columns
+2026-11-09, or for quality and cleansing on 2026-11-10 (references.md). Audit columns come after the table's columns
 (and after any columns the landed files carry), are typed `TIMESTAMP WITH TIME
 ZONE` (`loaded_at`) and `VARCHAR` (`source_file`), and are kept in the table and
-in the published Parquet; they are not contract columns. `source_file` is
+in the published Parquet; they are not among the table's columns. `source_file` is
 generated only for a flow's table, since a transform's table reads no files.
 The `append` mode's `_ingestron_file` column is not an audit column: it stays
 in the table, is not published, and is how files already loaded are skipped.

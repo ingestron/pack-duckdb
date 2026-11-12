@@ -43,9 +43,9 @@ Tables are built in one transaction and published after it commits; run with
 Running again is safe in every mode, and a table whose contract or source
 metadata gains columns keeps loading: new columns are added to the table. A
 changed primary key or column type needs the table built again: delete
-`ingestron.duckdb` and run again, which reloads everything from the files. In `upsert`, a key's row is the last by
-`sequence_by`, then by file name; set `sequence_by` when one file can hold a key
-twice.
+`ingestron.duckdb` and run again, which reloads everything from the files. In
+`upsert`, a key's row is the last by `sequence_by`, then by file name; set
+`sequence_by` when one file can hold a key twice.
 
 A transform's columns are cast to the contract's types, and a cast can change a
 value: a timestamp with a time zone loses its offset when the contract says
