@@ -53,11 +53,12 @@ columns> FROM …) TO '<published>/<schema>.<table>.parquet' (FORMAT parquet)`:
   reader's `filename` option names it, so a file's own `filename` column is
   kept apart); then each file's rows are inserted `BY NAME` unless its name is
   already there.
-- `upsert`: the table is created with the contract's columns and primary key;
+- `upsert`: the table is created with the table's columns and primary key;
   then `INSERT OR REPLACE … BY NAME`, keeping a key's last row by `sequence_by`
   when set, then by file name.
-- In both, each contract column is added when missing (`ALTER TABLE … ADD
-COLUMN IF NOT EXISTS`), so a contract that gains columns keeps loading.
+- In both, each of the table's columns is added when missing (`ALTER TABLE … ADD
+COLUMN IF NOT EXISTS`), so a table whose contract or source metadata gains
+  columns keeps loading.
 - When the table cleanses a column of its primary key with an operation that
   can change its value (`timezone`, `trim`, `empty`, `map`, `case` or
   `default`), two rows can reach the insert with one key: `" a"` and `"a"`

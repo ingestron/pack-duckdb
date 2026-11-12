@@ -25,7 +25,7 @@ skipped, and its new rows are not loaded. Give a re-export a new name, or delete
 `ingestron.duckdb` and run again to reload every file. In Azure each run starts
 with an empty database, so every file is read.
 
-A CSV without a header (`csv.header: false`) binds its columns in the contract's
+A CSV without a header (`csv.header: false`) binds its columns in the table's
 order, so the file's columns must be in that order. With a header, columns are
 matched by name.
 
@@ -39,11 +39,11 @@ duckdb -bail ingestron.duckdb -c ".read build/duckdb/dev/run.sql"
 ```
 
 Tables are built in one transaction and published after it commits; run with
-`-bail`, as above, so a run that fails while building publishes nothing. Running again is safe in every mode, and a
-contract that gains columns keeps
-loading: new columns are added to the table. A changed primary key or column
-type needs the table built again: delete `ingestron.duckdb` and run again,
-which reloads everything from the files. In `upsert`, a key's row is the last by
+`-bail`, as above, so a run that fails while building publishes nothing.
+Running again is safe in every mode, and a table whose contract or source
+metadata gains columns keeps loading: new columns are added to the table. A
+changed primary key or column type needs the table built again: delete
+`ingestron.duckdb` and run again, which reloads everything from the files. In `upsert`, a key's row is the last by
 `sequence_by`, then by file name; set `sequence_by` when one file can hold a key
 twice.
 
@@ -56,9 +56,9 @@ want to keep.
 Expectations written in a flow are refused, since DuckDB tables check no rows
 yet; the contract's quality rules are reported as not checked.
 
-Columns the landed files carry beyond the contract, such as ADF's audit
-columns, are kept after the contract's columns, typed by their `logicalType`,
-and published with them.
+Columns the landed files carry beyond the table's columns, such as ADF's audit
+columns, are kept after them, typed by their `logicalType`, and published with
+them.
 
 ## Run a cloud project locally
 
