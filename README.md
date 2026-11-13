@@ -132,7 +132,7 @@ that declares no intent gets the same SQL as with 2.1.
   - `history: latest` on a transform's table with a primary key upserts the
     query's rows in place of replacing the table.
 - The Platform has a `duckdb` section, which takes no fields.
-- Needs `@ingestron/definitions` 1.13 or later.
+- Needs `@ingestron/definitions` 1.14 or later.
 
 ## What changed in 2.0
 

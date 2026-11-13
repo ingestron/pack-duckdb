@@ -15,8 +15,8 @@ importers:
         specifier: ^1.1.0
         version: 1.1.0
       '@ingestron/definitions':
-        specifier: ^1.13.0
-        version: 1.13.0
+        specifier: ^1.14.0
+        version: 1.14.0
       '@microsoft/api-extractor':
         specifier: 7.59.4
         version: 7.59.4(@types/node@22.20.5)
@@ -334,8 +334,8 @@ packages:
     resolution: {integrity: sha512-ybWLmq4xf4RARirY24MxqwzAyS0KDMLMuoWVW71zRxaCXzclDeuKjNx8UYt6Kfhcqwy6aXty2zhJQhj/7LMmbQ==}
     engines: {node: '>=22.13.0'}
 
-  '@ingestron/definitions@1.13.0':
-    resolution: {integrity: sha512-/hqZ10uvdlZtVWcyKEB1aPc9rx0WZhjJ3dmG8v3cbcgoAg1maDOT4z54fZpA+7eQY4Yxjj4XWBuwzSRtcjWACQ==}
+  '@ingestron/definitions@1.14.0':
+    resolution: {integrity: sha512-Js7tLXptes3tkeeR3rPX0fyBlOMiYQc/QduwBpnH+u9X3HAM+YMX/ZU3JjJ3OYL2YW8Rp+Sl4De+pg6IG4nKoA==}
     engines: {node: '>=22.13.0'}
 
   '@jridgewell/resolve-uri@3.1.2':
@@ -1577,7 +1577,7 @@ snapshots:
       ajv: 8.20.0
       yaml: 2.9.1
 
-  '@ingestron/definitions@1.13.0':
+  '@ingestron/definitions@1.14.0':
     dependencies:
       '@ingestron/config': 1.7.0
       ajv: 8.20.0
