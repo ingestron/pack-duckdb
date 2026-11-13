@@ -92,17 +92,18 @@ quotes with `"` doubled; text in single quotes with `'` doubled.
 ## Checks
 
 A method check problem when `upsert` has no primary key, `sequence_by` is not a
-column of the table's contract or source metadata, an audit column has the name of a column of the table (or of
-`_ingestron_file` when the mode is not `replace`), a table's files have no recorded location or a format other
-than parquet, csv or json, `append` reads a file its ingest replaces each run, a flow or transform writes
-its own expectations in a layer whose `does` does not list `check` and is not
-`raw` (DuckDB checks rows only where it does: `DuckDB checks rows only in a layer whose does
-lists check, so the expectation "<name>" would not be checked; add check to the
-layer's does, or remove it`), a column whose type has a time zone (`TIMESTAMP
-WITH TIME ZONE`, `TIMESTAMPTZ`) converts its zone (`the column "<name>" is
-<type>, a moment in time with no wall-clock zone to convert; convert TIMESTAMP
-columns only`), a `files` connection has no `path`, or a transform's SQL names
-a table not in `inputs`.
+column of the table's contract or source metadata, an audit column has the name
+of a column of the table (or of `_ingestron_file` when the mode is not
+`replace`), a table's files have no recorded location or a format other than
+parquet, csv or json, `append` reads a file its ingest replaces each run, a flow
+or transform writes its own expectations in a layer whose `does` does not list
+`check` and is not `raw` (DuckDB checks rows only where it does: `DuckDB checks
+rows only in a layer whose does lists check, so the expectation "<name>" would
+not be checked; add check to the layer's does, or remove it`), a column whose
+type has a time zone (`TIMESTAMP WITH TIME ZONE`, `TIMESTAMPTZ`) converts its
+zone (`the column "<name>" is <type>, a moment in time with no wall-clock zone
+to convert; convert TIMESTAMP columns only`), a `files` connection has no
+`path`, or a transform's SQL names a table not in `inputs`.
 
 ## Intent
 
