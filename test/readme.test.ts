@@ -14,15 +14,15 @@ describe("the pack's version", () => {
 });
 
 describe("the package README and settings say what users would trip on", () => {
-  it("says a CSV without a header binds its columns in contract order", () => {
+  it("says a CSV without a header binds its columns in the table's order", () => {
     const settings = duckdb.methods["duckdb-files"]?.settings as {
       properties: { csv: { properties: { header: { description: string } } } };
     };
     expect(settings.properties.csv.properties.header.description).toBe(
-      "The first row names the columns. Without it, the columns bind in the contract's order.",
+      "The first row names the columns. Without it, the columns bind in the table's order.",
     );
     expect(readme).toContain(
-      "A CSV without a header (`csv.header: false`) binds its columns in the contract's order",
+      "A CSV without a header (`csv.header: false`) binds its columns in the table's order",
     );
   });
 
@@ -34,6 +34,15 @@ describe("the package README and settings say what users would trip on", () => {
       "a timestamp with a time zone loses its offset when the contract says `timestamp`, and a `timestamptz` shows the time in the session's time zone",
     );
     expect(readme).toContain("a decimal rounds when the contract says `integer`");
+  });
+
+  it("says the table's columns, whether they come from a contract or from source metadata", () => {
+    expect(readme).toContain(
+      "Columns the landed files carry beyond the table's columns, such as ADF's audit columns, are kept after them",
+    );
+    expect(readme).toContain(
+      "a table whose contract or source metadata gains columns keeps loading",
+    );
   });
 
   it("says append reads each file name once, so a re-exported file is skipped", () => {

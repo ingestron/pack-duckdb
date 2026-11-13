@@ -45,7 +45,7 @@ change from version 1, and the SQL is the same.
 
 ## Each table
 
-`CREATE SCHEMA IF NOT EXISTS`, then by mode, then `COPY (SELECT <contract
+`CREATE SCHEMA IF NOT EXISTS`, then by mode, then `COPY (SELECT <the table's
 columns> FROM …) TO '<published>/<schema>.<table>.parquet' (FORMAT parquet)`:
 
 - `replace`: `CREATE OR REPLACE TABLE … AS SELECT <columns> FROM <reader>`.
@@ -53,11 +53,12 @@ columns> FROM …) TO '<published>/<schema>.<table>.parquet' (FORMAT parquet)`:
   reader's `filename` option names it, so a file's own `filename` column is
   kept apart); then each file's rows are inserted `BY NAME` unless its name is
   already there.
-- `upsert`: the table is created with the contract's columns and primary key;
+- `upsert`: the table is created with the table's columns and primary key;
   then `INSERT OR REPLACE … BY NAME`, keeping a key's last row by `sequence_by`
   when set, then by file name.
-- In both, each contract column is added when missing (`ALTER TABLE … ADD
-COLUMN IF NOT EXISTS`), so a contract that gains columns keeps loading.
+- In both, each of the table's columns is added when missing
+  (`ALTER TABLE … ADD COLUMN IF NOT EXISTS`), so a table whose contract or
+  source metadata gains columns keeps loading.
 - When the table cleanses a column of its primary key with an operation that
   can change its value (`timezone`, `trim`, `empty`, `map`, `case` or
   `default`), two rows can reach the insert with one key: `" a"` and `"a"`
@@ -66,7 +67,7 @@ COLUMN IF NOT EXISTS`), so a contract that gains columns keeps loading.
   flow's `upsert` and a transform's `history: latest` alike, the rows are first
   made unique on the cleansed key: a `SELECT` of their own, so the window reads
   the key as cleansed, then
-  `QUALIFY row_number() OVER (PARTITION BY <key> ORDER BY <sequence> DESC, <file> DESC, <every contract column> DESC) = 1`,
+  `QUALIFY row_number() OVER (PARTITION BY <key> ORDER BY <sequence> DESC, <file> DESC, <every column of the table> DESC) = 1`,
   the sequence only when set and the file only for a flow (its
   `_ingestron_file` is left out of the result). Every run keeps the same row.
   Any other `upsert` is written as above, unchanged.
@@ -83,25 +84,26 @@ Each column is `CAST(<file column> AS <type>) AS <name>`. The file column is the
 the standard lists `duckdb@` first, else from the `logicalType` (`string`
 `VARCHAR`, `integer` `BIGINT`, `number` `DOUBLE`, `boolean` `BOOLEAN`, `date`
 `DATE`, `timestamp` `TIMESTAMP`, `time` `TIME`). Readers: `read_parquet`,
-`read_csv` (with `header` and `delim`, and `names` in contract order when
-`header` is false) and `read_json_auto`. A folder's trailing `/` or `\` is
+`read_csv` (with `header` and `delim`, and `names` in the table's column
+order when `header` is false) and `read_json_auto`. A folder's trailing `/` or `\` is
 dropped. Names are in double
 quotes with `"` doubled; text in single quotes with `'` doubled.
 
 ## Checks
 
 A method check problem when `upsert` has no primary key, `sequence_by` is not a
-contract column, an audit column has the name of a column of the table (or of
-`_ingestron_file` when the mode is not `replace`), a table's files have no recorded location or a format other
-than parquet, csv or json, `append` reads a file its ingest replaces each run, a flow or transform writes
-its own expectations in a layer whose `does` does not list `check` and is not
-`raw` (DuckDB checks rows only where it does: `DuckDB checks rows only in a layer whose does
-lists check, so the expectation "<name>" would not be checked; add check to the
-layer's does, or remove it`), a column whose type has a time zone (`TIMESTAMP
-WITH TIME ZONE`, `TIMESTAMPTZ`) converts its zone (`the column "<name>" is
-<type>, a moment in time with no wall-clock zone to convert; convert TIMESTAMP
-columns only`), a `files` connection has no `path`, or a transform's SQL names
-a table not in `inputs`.
+column of the table's contract or source metadata, an audit column has the name
+of a column of the table (or of `_ingestron_file` when the mode is not
+`replace`), a table's files have no recorded location or a format other than
+parquet, csv or json, `append` reads a file its ingest replaces each run, a flow
+or transform writes its own expectations in a layer whose `does` does not list
+`check` and is not `raw` (DuckDB checks rows only where it does: `DuckDB checks
+rows only in a layer whose does lists check, so the expectation "<name>" would
+not be checked; add check to the layer's does, or remove it`), a column whose
+type has a time zone (`TIMESTAMP WITH TIME ZONE`, `TIMESTAMPTZ`) converts its
+zone (`the column "<name>" is <type>, a moment in time with no wall-clock zone
+to convert; convert TIMESTAMP columns only`), a `files` connection has no
+`path`, or a transform's SQL names a table not in `inputs`.
 
 ## Intent
 
@@ -142,10 +144,10 @@ does with each value. The sources are in [references.md](references.md).
 | `access.*`                                                        | DuckDB has no access control                                                                       | n/a       |
 
 Every `used` feature is generally available on the page the pack checked on
-2026-11-09, or for quality and cleansing on 2026-11-10 (references.md). Audit columns come after the contract's columns
+2026-11-09, or for quality and cleansing on 2026-11-10 (references.md). Audit columns come after the table's columns
 (and after any columns the landed files carry), are typed `TIMESTAMP WITH TIME
 ZONE` (`loaded_at`) and `VARCHAR` (`source_file`), and are kept in the table and
-in the published Parquet; they are not contract columns. `source_file` is
+in the published Parquet; they are not among the table's columns. `source_file` is
 generated only for a flow's table, since a transform's table reads no files.
 The `append` mode's `_ingestron_file` column is not an audit column: it stays
 in the table, is not published, and is how files already loaded are skipped.
@@ -462,7 +464,7 @@ table's mode:
   quarantine is rebuilt each run:
   `CREATE OR REPLACE TABLE <quarantine> AS SELECT *, <failed> AS "_failed_checks" FROM "temp"."ingestron_rows" WHERE NOT <keep>;`
 - `append` adds each file once, so the quarantine is created (empty, from the
-  table) and gains the contract's new columns as the table does, then gains
+  table) and gains the table's new columns as the table does, then gains
   the rows: `INSERT INTO <quarantine> BY NAME SELECT *, <failed> AS "_failed_checks" FROM "temp"."ingestron_rows" WHERE NOT <keep>;`.
   It keeps `_ingestron_file`, and the files already loaded are those in the
   table or in its quarantine, so a file whose every row failed is not read

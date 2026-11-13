@@ -13,7 +13,7 @@ const csv = {
     header: {
       type: "boolean",
       description:
-        "The first row names the columns. Without it, the columns bind in the contract's order.",
+        "The first row names the columns. Without it, the columns bind in the table's order.",
     },
     delimiter: {
       type: "string",
