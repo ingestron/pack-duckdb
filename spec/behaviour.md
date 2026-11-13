@@ -85,9 +85,9 @@ the standard lists `duckdb@` first, else from the `logicalType` (`string`
 `VARCHAR`, `integer` `BIGINT`, `number` `DOUBLE`, `boolean` `BOOLEAN`, `date`
 `DATE`, `timestamp` `TIMESTAMP`, `time` `TIME`). Readers: `read_parquet`,
 `read_csv` (with `header` and `delim`, and `names` in the table's column
-order when `header` is false) and `read_json_auto`. A folder's trailing `/` or `\` is
-dropped. Names are in double
-quotes with `"` doubled; text in single quotes with `'` doubled.
+order when `header` is false) and `read_json_auto`. A folder's trailing `/` or
+`\` is dropped. Names are in double quotes with `"` doubled; text in single
+quotes with `'` doubled.
 
 ## Checks
 
