@@ -1,3 +1,4 @@
+import { compactSql } from "./sql-text.js";
 // Under runs-on: DuckDB reads the files another pack lands, from a local folder.
 import type { Pack } from "@ingestron/definitions";
 import { describe, expect, it } from "vitest";
@@ -41,7 +42,9 @@ describe("runs-on", () => {
     });
     const { result, files: built } = generate(files, [duckdb, copier(true)], "local");
     expect(result.diagnostics).toEqual([]);
-    expect(built["run.sql"]).toContain("FROM read_parquet('./samples/orders/*.parquet');");
+    expect(compactSql(built["run.sql"])).toContain(
+      compactSql("FROM read_parquet('./samples/orders/*.parquet');"),
+    );
   });
 
   it("names build/duckdb/<environment>/ in the README, where ingestron 2.0 writes it beside other packs", () => {
@@ -96,6 +99,6 @@ describe("runs-on", () => {
     const cloud = sqlOf("dev").replace("abfss://landing@acct/orders/*.parquet", "<landed>");
     const local = sqlOf("local").replace("./samples/orders/*.parquet", "<landed>");
     expect(local.replace("(local)", "(dev)")).toBe(cloud);
-    expect(local).toContain('CAST("name" AS VARCHAR) AS "name"');
+    expect(compactSql(local)).toContain(compactSql('CAST("name" AS VARCHAR) AS "name"'));
   });
 });

@@ -21,7 +21,7 @@ export function tableSql(
   resolvedTypes: boolean,
 ): string {
   const runId = keepsResults(table) ? [runIdSql] : [];
-  return [...runId, ...buildSql(model, table, resolvedTypes), publishSql(table)].join("\n");
+  return [...runId, ...buildSql(model, table, resolvedTypes), publishSql(table)].join("\n\n");
 }
 
 /** The statements that keep the table in the database, then count its table checks. */
@@ -47,8 +47,8 @@ export function publishSql(table: ResolvedTable): string {
     ...auditOf(table).map((c) => c.name),
   ]
     .map(quote)
-    .join(", ");
-  return `COPY (SELECT ${columns} FROM ${nameOf(table)}) TO ${literal(table.store!.output!.location)} (FORMAT parquet);`;
+    .join(",\n    ");
+  return `COPY (\n  SELECT\n    ${columns}\n  FROM ${nameOf(table)}\n)\nTO ${literal(table.store!.output!.location)}\n(FORMAT parquet);`;
 }
 
 const nameOf = (table: ResolvedTable) =>
@@ -76,17 +76,17 @@ function filesSql(target: Target): string[] {
   const select = [
     selectColumns(columnsOf(table), options, cleansing(table)),
     ...auditSelect(table),
-  ].join(", ");
+  ].join(",\n  ");
   const reader = readFiles({ ...files, withFile: true });
   const mode = table.store!.settings.mode;
   if (mode === "append") return appendSql(target, select, reader);
   if (mode === "upsert") return upsertSql(target, select, reader, true);
   if (table.cleanse?.deduplicate) {
-    const rows = `SELECT ${select}, ${quote(fileColumn)} FROM ${reader}`;
+    const rows = `SELECT\n  ${select},\n  ${quote(fileColumn)}\nFROM ${reader}`;
     return replaceSql(target, deduplicated(table, rows, fileColumn));
   }
   const replaced = readFiles({ ...files, withFile: readsFileName(table) });
-  return replaceSql(target, `SELECT ${select} FROM ${replaced}`);
+  return replaceSql(target, `SELECT\n  ${select}\nFROM ${replaced}`);
 }
 
 /** The transform's query, its inputs named by their tables, selecting the contract's columns. */
@@ -103,12 +103,12 @@ function transformSql(model: ResolvedModel, target: Target): string[] {
   const columns = [
     selectColumns(table.contract.columns, options, cleansing(table)),
     ...auditSelect(table),
-  ].join(", ");
+  ].join(",\n  ");
   // The code sits on its own lines, so a trailing comment cannot swallow the bracket.
   const query = `(\n${code}\n) AS "source"`;
   // With a key, `history: latest` keeps the rows the query no longer gives (by key).
   if (keepsLatest(table)) return upsertSql(target, columns, query, false);
-  return replaceSql(target, deduplicated(table, `SELECT ${columns} FROM ${query}`));
+  return replaceSql(target, deduplicated(table, `SELECT\n  ${columns}\nFROM ${query}`));
 }
 
 /**

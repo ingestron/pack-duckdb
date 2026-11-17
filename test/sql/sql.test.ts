@@ -47,13 +47,13 @@ describe("readFiles", () => {
 describe("selectColumns", () => {
   it("casts each column to its type, under its contract name", () => {
     expect(selectColumns(columns, { renamed: true, resolvedTypes: false })).toBe(
-      'CAST("id" AS BIGINT) AS "id", CAST("total" AS DOUBLE) AS "total"',
+      'CAST("id" AS BIGINT) AS "id",\n  CAST("total" AS DOUBLE) AS "total"',
     );
   });
 
   it("reads a column under its physicalName when the ingest did not rename it", () => {
     expect(selectColumns(columns, { renamed: false, resolvedTypes: false })).toBe(
-      'CAST("id" AS BIGINT) AS "id", CAST("Total Amount" AS DOUBLE) AS "total"',
+      'CAST("id" AS BIGINT) AS "id",\n  CAST("Total Amount" AS DOUBLE) AS "total"',
     );
   });
 

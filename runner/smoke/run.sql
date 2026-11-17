@@ -4,9 +4,20 @@
 BEGIN TRANSACTION;
 
 CREATE SCHEMA IF NOT EXISTS "bronze";
-CREATE OR REPLACE TABLE "bronze"."orders" AS SELECT CAST("id" AS BIGINT) AS "id", CAST("name" AS VARCHAR) AS "name" FROM read_csv('./samples/orders.csv', header = true, delim = ',');
+CREATE OR REPLACE TABLE "bronze"."orders" AS
+SELECT
+  CAST("id" AS BIGINT) AS "id",
+  CAST("name" AS VARCHAR) AS "name"
+FROM read_csv('./samples/orders.csv', header = true, delim = ',');
 
 COMMIT;
 
 -- Published only once every table is built.
-COPY (SELECT "id", "name" FROM "bronze"."orders") TO './published/bronze.orders.parquet' (FORMAT parquet);
+COPY (
+  SELECT
+    "id",
+    "name"
+  FROM "bronze"."orders"
+)
+TO './published/bronze.orders.parquet'
+(FORMAT parquet);
