@@ -509,3 +509,7 @@ commits nothing. It logs each query's rows, one line per row as
 `<column>=<value>` pairs joined by `, `, so each check's counts reach the job's
 log, and a `fail` check's message is in the error it logs. The results and
 quarantine tables last only for that run's database. Its README says so.
+
+## Generated SQL layout
+
+Generated file-reader queries put SELECT and FROM on separate lines and list projected columns on separate indented lines. DuckDB publishing queries put COPY, SELECT and TO on separate lines. Quoting and source values remain unchanged; authored transform SQL is preserved.

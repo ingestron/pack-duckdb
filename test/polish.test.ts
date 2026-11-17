@@ -1,3 +1,4 @@
+import { compactSql } from "./sql-text.js";
 // A run that fails publishes nothing; transforms and header-less CSV get the
 // contract's types and names; settings DuckDB cannot honour are refused.
 import { readdirSync, writeFileSync } from "node:fs";
@@ -97,8 +98,10 @@ describe("types and names", () => {
         counts("SELECT name, count(*) AS n FROM {{ tables.orders }} GROUP BY name"),
       ),
     );
-    expect(sql).toContain(
-      'CREATE OR REPLACE TABLE "silver"."counts" AS SELECT CAST("name" AS VARCHAR) AS "name", CAST("n" AS BIGINT) AS "n" FROM (',
+    expect(compactSql(sql)).toContain(
+      compactSql(
+        'CREATE OR REPLACE TABLE "silver"."counts" AS SELECT CAST("name" AS VARCHAR) AS "name", CAST("n" AS BIGINT) AS "n" FROM (',
+      ),
     );
   });
 

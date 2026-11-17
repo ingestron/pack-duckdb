@@ -1,3 +1,4 @@
+import { compactSql } from "./sql-text.js";
 // Intent (spec/behaviour.md, "Intent"): what the pack declares it applies, the settings that are
 // other names for intent, and the audit columns it adds.
 import { intentCoverageGaps, intentUseOf, type Method } from "@ingestron/definitions";
@@ -136,7 +137,7 @@ describe("the mode and sequence_by settings", () => {
     const fromSettings = runSql(project(where, "{ mode: upsert }"));
     const fromIntent = runSql(project(where, "{}", { "flow.yaml": flow(", history: latest") }));
     expect(fromIntent).toBe(fromSettings);
-    expect(fromIntent).toContain("INSERT OR REPLACE");
+    expect(compactSql(fromIntent)).toContain(compactSql("INSERT OR REPLACE"));
   });
 
   it("builds the same run.sql from `history: none` as from no intent (replace)", () => {
@@ -195,7 +196,9 @@ describe("the mode and sequence_by settings", () => {
   it("builds a project without intent as before", () => {
     const where = folder();
     const files = project(where);
-    expect(runSql(files)).toContain('CREATE OR REPLACE TABLE "bronze"."orders" AS SELECT');
+    expect(compactSql(runSql(files))).toContain(
+      compactSql('CREATE OR REPLACE TABLE "bronze"."orders" AS SELECT'),
+    );
     const model = generate(files).result.model!;
     expect(model.tables[0]!.intent).toEqual({ load: { mode: "full" }, history: "none" });
     expect(model.tables[0]!.store!.settings.mode).toBe("replace");
@@ -209,8 +212,8 @@ describe("audit columns", () => {
     const { result, files: built } = generate(files);
     expect(result.diagnostics.filter((item) => item.severity === "error")).toEqual([]);
     const sql = built["tables/bronze.orders.sql"]!;
-    expect(sql).toContain('now() AS "_loaded_at" FROM read_parquet(');
-    expect(sql).toMatch(
+    expect(compactSql(sql)).toContain(compactSql('now() AS "_loaded_at" FROM read_parquet('));
+    expect(compactSql(sql)).toMatch(
       /COPY \(SELECT "id", "name", "seq", "_loaded_at" FROM "bronze"\."orders"\)/,
     );
   });

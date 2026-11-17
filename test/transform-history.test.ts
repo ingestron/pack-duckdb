@@ -1,3 +1,4 @@
+import { compactSql } from "./sql-text.js";
 // `history: latest` on a transform's table: rows are upserted by key, and rows the query no
 // longer returns stay (spec/behaviour.md, "Intent").
 import { join } from "node:path";
@@ -47,11 +48,15 @@ const files = (
 describe("history: latest on a transform", () => {
   it("creates the table with its key, then upserts the query's rows", () => {
     const sql = runSql(files(folder(), "history: latest"));
-    expect(sql).toContain(
-      'CREATE TABLE IF NOT EXISTS "silver"."latest" ("id" BIGINT, "name" VARCHAR, "seq" BIGINT, PRIMARY KEY ("id"));',
+    expect(compactSql(sql)).toContain(
+      compactSql(
+        'CREATE TABLE IF NOT EXISTS "silver"."latest" ("id" BIGINT, "name" VARCHAR, "seq" BIGINT, PRIMARY KEY ("id"));',
+      ),
     );
-    expect(sql).toContain(
-      'INSERT OR REPLACE INTO "silver"."latest" BY NAME SELECT CAST("id" AS BIGINT) AS "id", CAST("name" AS VARCHAR) AS "name", CAST("seq" AS BIGINT) AS "seq" FROM (\nSELECT id, name, seq FROM "bronze"."orders"\n) AS "source";',
+    expect(compactSql(sql)).toContain(
+      compactSql(
+        'INSERT OR REPLACE INTO "silver"."latest" BY NAME SELECT CAST("id" AS BIGINT) AS "id", CAST("name" AS VARCHAR) AS "name", CAST("seq" AS BIGINT) AS "seq" FROM (\nSELECT id, name, seq FROM "bronze"."orders"\n) AS "source";',
+      ),
     );
     expect(sql).not.toContain('CREATE OR REPLACE TABLE "silver"."latest"');
   });
@@ -95,12 +100,16 @@ describe("history: latest on a transform", () => {
 
   it("leaves a keyed transform with `mode: upsert` as a setting alone as it was", () => {
     const sql = runSql(files(folder(), "", "primaryKey: true", "{ mode: upsert }"));
-    expect(sql).toContain('CREATE OR REPLACE TABLE "silver"."latest" AS SELECT');
-    expect(sql).not.toContain('INSERT OR REPLACE INTO "silver"."latest"');
+    expect(compactSql(sql)).toContain(
+      compactSql('CREATE OR REPLACE TABLE "silver"."latest" AS SELECT'),
+    );
+    expect(compactSql(sql)).not.toContain(compactSql('INSERT OR REPLACE INTO "silver"."latest"'));
   });
 
   it("leaves a transform without history as it was", () => {
     const sql = runSql(files(folder(), ""));
-    expect(sql).toContain('CREATE OR REPLACE TABLE "silver"."latest" AS SELECT');
+    expect(compactSql(sql)).toContain(
+      compactSql('CREATE OR REPLACE TABLE "silver"."latest" AS SELECT'),
+    );
   });
 });

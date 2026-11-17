@@ -1,3 +1,4 @@
+import { compactSql } from "./sql-text.js";
 // Columns the landed files carry beyond the contract (such as ADF's audit
 // columns) are kept in the table and published, typed by their logicalType.
 import { join } from "node:path";
@@ -62,7 +63,9 @@ describe("extra columns the landed files carry", () => {
       expect(rows).toEqual([
         { kind: "TIMESTAMP", at: "2026-11-02 03:43:39.123456", _run_id: "run-1" },
       ]);
-      expect(sql).toContain('"_loaded_at", "_run_id" FROM "bronze"."orders") TO');
+      expect(compactSql(sql)).toContain(
+        compactSql('"_loaded_at", "_run_id" FROM "bronze"."orders") TO'),
+      );
     });
 
   for (const store of ["{}", "{ mode: append }", "{ mode: upsert }"])
