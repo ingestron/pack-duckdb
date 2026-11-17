@@ -32,7 +32,7 @@ const checked = (target: Target) => rowChecksOf(target.table).length > 0;
  */
 function checking(rows: string, target: Target, insert: string, quarantine: string[]): string[] {
   return [
-    `CREATE OR REPLACE TEMP TABLE "ingestron_rows" AS ${rows};`,
+    `CREATE OR REPLACE TEMP TABLE "ingestron_rows" AS\n${rows};`,
     ...rowCheckSql(target.table),
     insert,
     ...quarantine,
@@ -42,7 +42,7 @@ function checking(rows: string, target: Target, insert: string, quarantine: stri
 
 /** The table is the rows, each run; its quarantine, the rows its drop checks leave out. */
 export function replaceSql(target: Target, rows: string): string[] {
-  if (!checked(target)) return [`CREATE OR REPLACE TABLE ${target.name} AS ${rows};`];
+  if (!checked(target)) return [`CREATE OR REPLACE TABLE ${target.name} AS\n${rows};`];
   const quarantine = quarantineOf(target.table);
   return checking(
     rows,
@@ -59,15 +59,15 @@ export function replaceSql(target: Target, rows: string): string[] {
  * the table, and those in its quarantine, so a file whose every row failed is not read again.
  */
 export function appendSql(target: Target, select: string, reader: string): string[] {
-  const rows = `SELECT ${select}, ${quote(fileColumn)} FROM ${reader}`;
+  const rows = `SELECT\n  ${select},\n  ${quote(fileColumn)}\nFROM ${reader}`;
   const file = quote(fileColumn);
   const created = [
-    `CREATE TABLE IF NOT EXISTS ${target.name} AS ${rows} LIMIT 0;`,
+    `CREATE TABLE IF NOT EXISTS ${target.name} AS\n${rows}\nLIMIT 0;`,
     ...addColumns(target, target.name),
   ];
   const loaded = `${file} NOT IN (SELECT ${file} FROM ${target.name})`;
   if (!checked(target))
-    return [...created, `INSERT INTO ${target.name} BY NAME ${rows} WHERE ${loaded};`];
+    return [...created, `INSERT INTO ${target.name} BY NAME\n${rows}\nWHERE ${loaded};`];
   const quarantine = quarantineOf(target.table);
   const column = quote(target.table.quarantine?.column ?? "");
   const kept = quarantine
@@ -129,14 +129,14 @@ export function upsertSql(
     ? ` QUALIFY row_number() OVER (PARTITION BY ${keys} ORDER BY ${order}) = 1`
     : "";
   const created = [
-    `CREATE TABLE IF NOT EXISTS ${target.name} (${definitions(target).join(", ")}, PRIMARY KEY (${keys}));`,
+    `CREATE TABLE IF NOT EXISTS ${target.name} (\n  ${definitions(target).join(",\n  ")},\n  PRIMARY KEY (${keys})\n);`,
     ...addColumns(target, target.name),
   ];
   const rows = cleansesKey(table)
     ? uniqueByKey(target, select, source, files)
-    : `SELECT ${select} FROM ${source}${last}`;
+    : `SELECT\n  ${select}\nFROM ${source}${last}`;
   if (!checked(target))
-    return [...created, `INSERT OR REPLACE INTO ${target.name} BY NAME ${rows};`];
+    return [...created, `INSERT OR REPLACE INTO ${target.name} BY NAME\n${rows};`];
   const quarantine = quarantineOf(table);
   return [
     ...created,

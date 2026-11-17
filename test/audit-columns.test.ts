@@ -1,3 +1,4 @@
+import { compactSql } from "./sql-text.js";
 // The audit columns the pack adds (spec/behaviour.md, "Intent"), run against DuckDB.
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -132,9 +133,9 @@ describe("audit columns", () => {
     const { result, files: built } = generate(files);
     expect(result.diagnostics.filter((item) => item.severity === "error")).toEqual([]);
     const transform = built["tables/silver.counts.sql"]!;
-    expect(transform).toContain('now() AS "_loaded_at" FROM (\n');
+    expect(compactSql(transform)).toContain(compactSql('now() AS "_loaded_at" FROM (\n'));
     expect(transform).not.toContain("_source_file");
-    expect(transform).toContain('"n", "_loaded_at" FROM "silver"."counts"');
+    expect(compactSql(transform)).toContain(compactSql('"n", "_loaded_at" FROM "silver"."counts"'));
     expect(built["tables/bronze.orders.sql"]).toContain('"_ingestron_file" AS "_source_file"');
   });
 
@@ -145,7 +146,9 @@ describe("audit columns", () => {
         "standard.yaml": standard(["audit: [source_file]"], "{ mode: append }"),
       }),
     );
-    expect(sql).toContain('"_ingestron_file" AS "_source_file", "_ingestron_file" FROM');
+    expect(compactSql(sql)).toContain(
+      compactSql('"_ingestron_file" AS "_source_file", "_ingestron_file" FROM'),
+    );
     expect(sql).not.toMatch(/COPY \(SELECT[^)]*_ingestron_file/);
   });
 

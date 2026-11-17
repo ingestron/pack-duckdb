@@ -77,7 +77,7 @@ export function selectColumns(
       const cast = `CAST(${quote(source)} AS ${typeOf(column, options)})`;
       return `${wrap(column, cast)} AS ${quote(column.name)}`;
     })
-    .join(", ");
+    .join(",\n  ");
 }
 
 /** The resolved type when it is DuckDB's; otherwise from the logicalType. */

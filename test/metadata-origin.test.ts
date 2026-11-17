@@ -1,3 +1,4 @@
+import { compactSql } from "./sql-text.js";
 // A table with no contract, whose columns and key come from source metadata, builds as a
 // table with a contract does (specification section 12.4).
 import { join } from "node:path";
@@ -38,11 +39,15 @@ describe("a table with no contract", () => {
     const files = withoutContract(where);
     expect(generate(files).result.diagnostics).toEqual([]);
     const sql = runSql(files);
-    expect(sql).toContain(
-      `CREATE OR REPLACE TABLE "bronze"."orders" AS SELECT CAST("id" AS BIGINT) AS "id", CAST("name" AS VARCHAR) AS "name", CAST("seq" AS BIGINT) AS "seq" FROM read_parquet('${where.input}/orders/*.parquet');`,
+    expect(compactSql(sql)).toContain(
+      compactSql(
+        `CREATE OR REPLACE TABLE "bronze"."orders" AS SELECT CAST("id" AS BIGINT) AS "id", CAST("name" AS VARCHAR) AS "name", CAST("seq" AS BIGINT) AS "seq" FROM read_parquet('${where.input}/orders/*.parquet');`,
+      ),
     );
-    expect(sql).toContain(
-      `COPY (SELECT "id", "name", "seq" FROM "bronze"."orders") TO '${where.published}/bronze.orders.parquet' (FORMAT parquet);`,
+    expect(compactSql(sql)).toContain(
+      compactSql(
+        `COPY (SELECT "id", "name", "seq" FROM "bronze"."orders") TO '${where.published}/bronze.orders.parquet' (FORMAT parquet);`,
+      ),
     );
     const database = join(where.root, "ingestron.duckdb");
     expect(await execute(database, sql, "SELECT id, name FROM bronze.orders ORDER BY id")).toEqual([
@@ -57,11 +62,15 @@ describe("a table with no contract", () => {
     const { result, files: built } = generate(files);
     expect(result.diagnostics.filter((item) => item.severity === "error")).toEqual([]);
     const sql = built["run.sql"];
-    expect(sql).toContain(
-      'CREATE TABLE IF NOT EXISTS "bronze"."orders" ("id" BIGINT, "name" VARCHAR, "seq" BIGINT, PRIMARY KEY ("id"));',
+    expect(compactSql(sql)).toContain(
+      compactSql(
+        'CREATE TABLE IF NOT EXISTS "bronze"."orders" ("id" BIGINT, "name" VARCHAR, "seq" BIGINT, PRIMARY KEY ("id"));',
+      ),
     );
-    expect(sql).toContain(
-      `INSERT OR REPLACE INTO "bronze"."orders" BY NAME SELECT CAST("id" AS BIGINT) AS "id", CAST("name" AS VARCHAR) AS "name", CAST("seq" AS BIGINT) AS "seq" FROM read_parquet('${where.input}/orders/*.parquet', filename = '_ingestron_file') QUALIFY row_number() OVER (PARTITION BY "id" ORDER BY "seq" DESC, "_ingestron_file" DESC) = 1;`,
+    expect(compactSql(sql)).toContain(
+      compactSql(
+        `INSERT OR REPLACE INTO "bronze"."orders" BY NAME SELECT CAST("id" AS BIGINT) AS "id", CAST("name" AS VARCHAR) AS "name", CAST("seq" AS BIGINT) AS "seq" FROM read_parquet('${where.input}/orders/*.parquet', filename = '_ingestron_file') QUALIFY row_number() OVER (PARTITION BY "id" ORDER BY "seq" DESC, "_ingestron_file" DESC) = 1;`,
+      ),
     );
   });
 

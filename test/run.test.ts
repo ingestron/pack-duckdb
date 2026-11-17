@@ -1,3 +1,4 @@
+import { compactSql } from "./sql-text.js";
 // run.sql: written for each table, and run with DuckDB, twice where a rerun must change nothing.
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -10,11 +11,15 @@ describe("replace", () => {
     const where = folder();
     await writeParquet(join(where.input, "orders/a.parquet"), "(1, 'a', 1), (2, 'b', 1)");
     const sql = runSql(project(where));
-    expect(sql).toContain(
-      `CREATE OR REPLACE TABLE "bronze"."orders" AS SELECT CAST("id" AS BIGINT) AS "id", CAST("name" AS VARCHAR) AS "name", CAST("seq" AS BIGINT) AS "seq" FROM read_parquet('${where.input}/orders/*.parquet');`,
+    expect(compactSql(sql)).toContain(
+      compactSql(
+        `CREATE OR REPLACE TABLE "bronze"."orders" AS SELECT CAST("id" AS BIGINT) AS "id", CAST("name" AS VARCHAR) AS "name", CAST("seq" AS BIGINT) AS "seq" FROM read_parquet('${where.input}/orders/*.parquet');`,
+      ),
     );
-    expect(sql).toContain(
-      `COPY (SELECT "id", "name", "seq" FROM "bronze"."orders") TO '${where.published}/bronze.orders.parquet' (FORMAT parquet);`,
+    expect(compactSql(sql)).toContain(
+      compactSql(
+        `COPY (SELECT "id", "name", "seq" FROM "bronze"."orders") TO '${where.published}/bronze.orders.parquet' (FORMAT parquet);`,
+      ),
     );
     const database = join(where.root, "ingestron.duckdb");
     expect(await execute(database, sql, ordered)).toEqual([
@@ -117,8 +122,10 @@ describe("transforms", () => {
     const sql = runSql(
       project(where, "{}", { "counts.yaml": transform, "counts-contract.yaml": counts }),
     );
-    expect(sql).toContain(
-      'CREATE OR REPLACE TABLE "silver"."counts" AS SELECT CAST("name" AS VARCHAR) AS "name", CAST("n" AS BIGINT) AS "n" FROM (\nSELECT name, count(*) AS n FROM "bronze"."orders" GROUP BY name\n) AS "source";',
+    expect(compactSql(sql)).toContain(
+      compactSql(
+        'CREATE OR REPLACE TABLE "silver"."counts" AS SELECT CAST("name" AS VARCHAR) AS "name", CAST("n" AS BIGINT) AS "n" FROM (\nSELECT name, count(*) AS n FROM "bronze"."orders" GROUP BY name\n) AS "source";',
+      ),
     );
     const database = join(where.root, "ingestron.duckdb");
     expect(await execute(database, sql, "SELECT name, n FROM silver.counts ORDER BY name")).toEqual(
